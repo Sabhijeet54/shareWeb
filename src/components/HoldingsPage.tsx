@@ -6,7 +6,7 @@ import { useAuth } from "@/context/AuthContext";
 import { db } from "@/lib/firebase";
 import type { TradeOrder } from "@/types/app";
 import { useLiveQuotes } from "@/lib/useLiveQuotes";
-import { YAHOO_SYMBOL_MAP } from "@/lib/symbolMap";
+import { FINNHUB_SYMBOL_MAP } from "@/lib/symbolMap";
 
 type HoldingRow = {
   symbol: string;
@@ -73,7 +73,7 @@ export function HoldingsPage() {
   const { user } = useAuth();
   const holdings = useHoldings(user?.uid ?? "");
 
-  const holdingSymbols = holdings.map((h) => h.symbol).filter((s) => s in YAHOO_SYMBOL_MAP);
+  const holdingSymbols = holdings.map((h) => h.symbol).filter((s) => s in FINNHUB_SYMBOL_MAP);
   const quotes = useLiveQuotes(holdingSymbols, 20000);
 
   const enriched = holdings.map((h) => {

@@ -1,7 +1,5 @@
-// Maps internal app symbols → Yahoo Finance ticker symbols
-// Yahoo Finance gives free real-time data for NSE/BSE stocks + indices
-// NSE stocks use .NS suffix, BSE use .BO suffix
-// Indices use ^ prefix
+// Maps internal app symbols to market data provider symbols.
+// Finnhub is used for live quotes, chart candles, metrics, and search.
 
 export const YAHOO_SYMBOL_MAP: Record<string, string> = {
   // Indices
@@ -47,6 +45,48 @@ export const YAHOO_SYMBOL_MAP: Record<string, string> = {
   XRPUSDT: "XRP-USD",
 };
 
+export const FINNHUB_SYMBOL_MAP: Record<string, string> = {
+  // Indices
+  NIFTY: "^NSEI",
+  SENSEX: "^BSESN",
+  BANKNIFTY: "^NSEBANK",
+  FINNIFTY: "NIFTY_FIN_SERVICE.NS",
+  MIDCPNIFTY: "^CNXMIDCAP",
+  INDIAVIX: "^INDIAVIX",
+
+  // Large-cap NSE stocks
+  RELIANCE: "RELIANCE.NS",
+  TCS: "TCS.NS",
+  HDFCBANK: "HDFCBANK.NS",
+  INFY: "INFY.NS",
+  ICICIBANK: "ICICIBANK.NS",
+  SBIN: "SBIN.NS",
+  LT: "LT.NS",
+  TATAMOTORS: "TATAMOTORS.NS",
+  WIPRO: "WIPRO.NS",
+  AXISBANK: "AXISBANK.NS",
+  MARUTI: "MARUTI.NS",
+  SUNPHARMA: "SUNPHARMA.NS",
+  ADANIPORTS: "ADANIPORTS.NS",
+  BAJFINANCE: "BAJFINANCE.NS",
+  KOTAKBANK: "KOTAKBANK.NS",
+  HINDUNILVR: "HINDUNILVR.NS",
+  TITAN: "TITAN.NS",
+  NESTLEIND: "NESTLEIND.NS",
+  ULTRACEMCO: "ULTRACEMCO.NS",
+  POWERGRID: "POWERGRID.NS",
+
+  // Commodities / crypto provider symbols. Support depends on the Finnhub plan.
+  GOLD: "OANDA:XAU_USD",
+  SILVER: "OANDA:XAG_USD",
+  CRUDEOIL: "NYMEX:CL",
+  NATURALGAS: "NYMEX:NG",
+  BTCUSDT: "BINANCE:BTCUSDT",
+  ETHUSDT: "BINANCE:ETHUSDT",
+  SOLUSDT: "BINANCE:SOLUSDT",
+  XRPUSDT: "BINANCE:XRPUSDT",
+};
+
 // Reverse map for display
 export const DISPLAY_NAME_MAP: Record<string, string> = {
   "^NSEI": "NIFTY 50",
@@ -61,6 +101,10 @@ export const DISPLAY_NAME_MAP: Record<string, string> = {
 
 export function toYahoo(symbol: string): string {
   return YAHOO_SYMBOL_MAP[symbol] ?? symbol + ".NS";
+}
+
+export function toFinnhub(symbol: string): string {
+  return FINNHUB_SYMBOL_MAP[symbol] ?? symbol;
 }
 
 // Yahoo chart interval → display label

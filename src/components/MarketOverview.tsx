@@ -9,12 +9,12 @@ import { watchlists, watchTabs, getContractMeta } from "@/lib/marketData";
 import type { WatchlistKey } from "@/lib/marketData";
 import { useLiveQuotes } from "@/lib/useLiveQuotes";
 import { useDerivativeQuotes } from "@/lib/useDerivativeQuotes";
-import { YAHOO_SYMBOL_MAP } from "@/lib/symbolMap";
+import { FINNHUB_SYMBOL_MAP } from "@/lib/symbolMap";
 import { StockDetailModal } from "@/components/StockDetailModal";
 import type { Instrument } from "@/types/app";
 
-// Instruments that have direct Yahoo tickers
-const DIRECT_SYMBOLS = Object.keys(YAHOO_SYMBOL_MAP);
+// Instruments that have direct Finnhub quote symbols
+const DIRECT_SYMBOLS = Object.keys(FINNHUB_SYMBOL_MAP);
 const allInstruments: Instrument[] = Object.values(watchlists).flat();
 
 // Symbols needed to derive F&O prices
@@ -23,7 +23,7 @@ const SPOT_SYMBOLS_FOR_FO = ["NIFTY", "BANKNIFTY", "FINNIFTY", "MIDCPNIFTY", "RE
 type SortKey = "default" | "price_asc" | "price_desc" | "change_asc" | "change_desc";
 
 function useCombinedQuotes(tabSymbols: string[]) {
-  // Direct Yahoo symbols in this tab
+  // Direct Finnhub quote symbols in this tab
   const directSymbols = useMemo(() => tabSymbols.filter((s) => DIRECT_SYMBOLS.includes(s)), [tabSymbols]);
   // Spot symbols needed for F&O derivation
   const needsSpot = useMemo(() =>
@@ -79,7 +79,7 @@ export function MarketOverview({ balance }: { balance: number }) {
   const selectedCombined = useCombinedQuotes(selectedTab);
   const selectedQuote = selectedCombined[selected.symbol];
 
-  // Search with Yahoo autocomplete
+  // Search autocomplete
   const [searchResults, setSearchResults] = useState<Array<{ symbol: string; shortname: string; exchange: string }>>([]);
   const searchDebounce = useRef<ReturnType<typeof setTimeout> | null>(null);
 

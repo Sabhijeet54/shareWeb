@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { toYahoo } from "@/lib/symbolMap";
+import { toFinnhub } from "@/lib/symbolMap";
 
 export type LiveQuote = {
   symbol: string;
@@ -24,7 +24,7 @@ export type LiveQuote = {
   isError: boolean;
 };
 
-type RawYahooResult = {
+type RawProviderResult = {
   symbol: string;
   shortName?: string;
   longName?: string;
@@ -43,7 +43,7 @@ type RawYahooResult = {
   epsTrailingTwelveMonths?: number;
 };
 
-function mapResult(raw: RawYahooResult, appSymbol: string): LiveQuote {
+function mapResult(raw: RawProviderResult, appSymbol: string): LiveQuote {
   return {
     symbol: appSymbol,
     yahooSymbol: raw.symbol,
@@ -76,7 +76,7 @@ export function useLiveQuotes(
     for (const sym of symbols) {
       init[sym] = {
         symbol: sym,
-        yahooSymbol: toYahoo(sym),
+        yahooSymbol: toFinnhub(sym),
         name: sym,
         price: 0,
         change: 0,
@@ -101,32 +101,31 @@ export function useLiveQuotes(
   const fetchQuotes = useCallback(async () => {
     if (symbolsRef.current.length === 0) return;
 
-    // Build yahoo symbol string, deduplicated
-    const yahooSymbols = [
-      ...new Set(symbolsRef.current.map((s) => toYahoo(s))),
+    const finnhubSymbols = [
+      ...new Set(symbolsRef.current.map((s) => toFinnhub(s))),
     ].join(",");
 
     try {
-      const res = await fetch(`/api/quote?symbols=${encodeURIComponent(yahooSymbols)}`);
+      const res = await fetch(`/api/quote?symbols=${encodeURIComponent(finnhubSymbols)}`);
       if (!res.ok) throw new Error("fetch failed");
 
       const data = await res.json();
-      const results: RawYahooResult[] =
+      const results: RawProviderResult[] =
         data?.quoteResponse?.result ?? data?.result ?? [];
 
       if (results.length === 0) throw new Error("no results");
 
       // Build a map from yahoo symbol → raw result
-      const byYahoo: Record<string, RawYahooResult> = {};
+      const byProviderSymbol: Record<string, RawProviderResult> = {};
       for (const r of results) {
-        byYahoo[r.symbol] = r;
+        byProviderSymbol[r.symbol] = r;
       }
 
       setQuotes((prev) => {
         const next = { ...prev };
         for (const appSym of symbolsRef.current) {
-          const yahooSym = toYahoo(appSym);
-          const raw = byYahoo[yahooSym];
+          const providerSymbol = toFinnhub(appSym);
+          const raw = byProviderSymbol[providerSymbol];
           if (raw) {
             next[appSym] = mapResult(raw, appSym);
           } else {

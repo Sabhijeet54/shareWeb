@@ -7,7 +7,7 @@ import { useAuth } from "@/context/AuthContext";
 import { db } from "@/lib/firebase";
 import type { TradeOrder } from "@/types/app";
 import { useLiveQuotes } from "@/lib/useLiveQuotes";
-import { YAHOO_SYMBOL_MAP } from "@/lib/symbolMap";
+import { FINNHUB_SYMBOL_MAP } from "@/lib/symbolMap";
 import { watchlists } from "@/lib/marketData";
 
 const SECTOR_MAP: Record<string, string> = {
@@ -69,7 +69,7 @@ export function PortfolioDashboard({ balance }: { balance: number }) {
     return realised;
   }, [trades]);
 
-  const openSymbols = positions.map((p) => p.symbol).filter((s) => s in YAHOO_SYMBOL_MAP);
+  const openSymbols = positions.map((p) => p.symbol).filter((s) => s in FINNHUB_SYMBOL_MAP);
   const quotes = useLiveQuotes(openSymbols, 10000);
 
   const enriched = positions.map((pos) => {

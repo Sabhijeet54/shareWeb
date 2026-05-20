@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { toYahoo } from "@/lib/symbolMap";
+import { toFinnhub } from "@/lib/symbolMap";
 
 export type OHLCVBar = {
   time: number; // unix seconds
@@ -39,10 +39,10 @@ export function useChartData(
     setIsError(false);
     setBars([]);
 
-    const yahooSym = toYahoo(symbol);
+    const finnhubSym = toFinnhub(symbol);
 
     fetch(
-      `/api/chart?symbol=${encodeURIComponent(yahooSym)}&interval=${interval}&range=${range}`,
+      `/api/chart?symbol=${encodeURIComponent(finnhubSym)}&interval=${interval}&range=${range}`,
       { signal: controller.signal },
     )
       .then((r) => {
