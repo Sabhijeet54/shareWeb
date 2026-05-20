@@ -1,0 +1,12 @@
+<svg width="160" height="160" viewBox="0 0 160 160" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="160" height="160" rx="12" fill="white"/>
+  <rect x="14" y="14" width="42" height="42" fill="#0F172A"/>
+  <rect x="24" y="24" width="22" height="22" fill="white"/>
+  <rect x="104" y="14" width="42" height="42" fill="#0F172A"/>
+  <rect x="114" y="24" width="22" height="22" fill="white"/>
+  <rect x="14" y="104" width="42" height="42" fill="#0F172A"/>
+  <rect x="24" y="114" width="22" height="22" fill="white"/>
+  <path d="M70 16h10v10H70V16Zm20 0h8v18h-8V16ZM68 38h30v8H68v-8Zm0 18h10v12H68V56Zm22 0h18v10H90V56Zm28 14h26v8h-26v-8ZM70 82h14v14H70V82Zm24 0h10v10H94V82Zm20 4h10v18h-10V86Zm-46 26h28v8H68v-8Zm42 0h8v14h-8v-14Zm18 0h18v10h-18v-10Zm-60 20h12v12H68v-12Zm22-2h16v16H90v-16Zm30 6h8v10h-8v-10Zm18-8h8v18h-8v-18Z" fill="#0F172A"/>
+  <rect x="64" y="64" width="32" height="32" rx="6" fill="#10B981"/>
+  <text x="80" y="84" text-anchor="middle" font-family="Arial, sans-serif" font-size="9" font-weight="700" fill="#0F172A">UPI</text>
+</svg>
