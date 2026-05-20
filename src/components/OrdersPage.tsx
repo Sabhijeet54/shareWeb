@@ -1,13 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import {
-  collection,
-  onSnapshot,
-  orderBy,
-  query,
-  where,
-} from "firebase/firestore";
+import { collection, onSnapshot, query, where } from "firebase/firestore";
 import { FiCheckCircle } from "react-icons/fi";
 import { useAuth } from "@/context/AuthContext";
 import { db } from "@/lib/firebase";
@@ -20,19 +14,15 @@ export function OrdersPage() {
   useEffect(() => {
     if (!user) return;
 
+    // No orderBy — avoids composite index requirement. Sort client-side.
     const ordersQuery = query(
       collection(db, "trades"),
       where("userId", "==", user.uid),
-      orderBy("createdAt", "desc"),
     );
-
     return onSnapshot(ordersQuery, (snapshot) => {
-      setOrders(
-        snapshot.docs.map((item) => ({
-          id: item.id,
-          ...item.data(),
-        })) as TradeOrder[],
-      );
+      const all = snapshot.docs.map((item) => ({ id: item.id, ...item.data() })) as TradeOrder[];
+      all.sort((a, b) => (b.createdAt?.toMillis?.() ?? 0) - (a.createdAt?.toMillis?.() ?? 0));
+      setOrders(all);
     });
   }, [user]);
 

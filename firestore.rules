@@ -35,5 +35,12 @@ service cloud.firestore {
         && (resource.data.userId == request.auth.uid || isAdmin());
       allow update, delete: if false;
     }
+
+    match /journal/{entryId} {
+      allow create: if signedIn() && request.resource.data.userId == request.auth.uid;
+      allow read: if signedIn() && resource.data.userId == request.auth.uid;
+      allow delete: if signedIn() && resource.data.userId == request.auth.uid;
+      allow update: if signedIn() && resource.data.userId == request.auth.uid;
+    }
   }
 }

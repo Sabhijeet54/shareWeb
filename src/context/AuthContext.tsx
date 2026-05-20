@@ -6,7 +6,7 @@ import {
   signInWithEmailAndPassword,
   signOut,
 } from "firebase/auth";
-import { doc, onSnapshot, serverTimestamp, setDoc } from "firebase/firestore";
+import { doc, getDoc, onSnapshot, serverTimestamp, setDoc, updateDoc } from "firebase/firestore";
 import {
   createContext,
   useCallback,
@@ -48,16 +48,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       const userRef = doc(db, "users", currentUser.uid);
-      await setDoc(
-        userRef,
-        {
+      // Only set walletBalance:0 if the document doesn't exist yet — never overwrite existing balance
+      const snap = await getDoc(userRef);
+      if (!snap.exists()) {
+        await setDoc(userRef, {
           email: currentUser.email,
           name: currentUser.displayName || currentUser.email.split("@")[0],
           walletBalance: 0,
           createdAt: serverTimestamp(),
-        },
-        { merge: true },
-      );
+        });
+      } else {
+        // Just update profile fields, never touch walletBalance
+        await updateDoc(userRef, {
+          email: currentUser.email,
+          name: snap.data().name ?? currentUser.displayName ?? currentUser.email.split("@")[0],
+        });
+      }
 
       unsubscribeProfile = onSnapshot(userRef, (snapshot) => {
         setProfile(snapshot.data() as AppUser);
