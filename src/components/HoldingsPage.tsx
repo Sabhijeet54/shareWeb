@@ -73,8 +73,13 @@ export function HoldingsPage() {
   const { user } = useAuth();
   const holdings = useHoldings(user?.uid ?? "");
 
+<<<<<<< Updated upstream
   const holdingSymbols = holdings.map((h) => h.symbol).filter((s) => s in YAHOO_SYMBOL_MAP);
   const quotes = useLiveQuotes(holdingSymbols, 20000);
+=======
+  const holdingSymbols = holdings.map((h) => h.symbol).filter((s) => s in FINNHUB_SYMBOL_MAP);
+  const quotes = useLiveQuotes(holdingSymbols, 2500);
+>>>>>>> Stashed changes
 
   const enriched = holdings.map((h) => {
     const q = quotes[h.symbol];
@@ -99,25 +104,25 @@ export function HoldingsPage() {
     <div className="space-y-5">
       {/* Summary */}
       <div className="rounded-[1.5rem] border border-emerald-300/20 bg-[linear-gradient(135deg,rgba(16,185,129,0.14),rgba(15,23,42,0.88))] p-5">
-        <p className="text-xs font-semibold uppercase tracking-widest text-emerald-300">Holdings (CNC)</p>
+        <p className="text-xs font-semibold uppercase tracking-widest text-[var(--accent-label)]">Holdings (CNC)</p>
         <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
           <div>
-            <p className="text-xs text-slate-500">Invested</p>
-            <p className="text-xl font-bold text-white">₹{totalInvested.toLocaleString("en-IN")}</p>
+            <p className="text-xs text-[var(--text-muted)]">Invested</p>
+            <p className="text-xl font-bold text-[var(--text-primary)]">₹{totalInvested.toLocaleString("en-IN")}</p>
           </div>
           <div>
-            <p className="text-xs text-slate-500">Current Value</p>
-            <p className="text-xl font-bold text-white">₹{totalCurrent.toLocaleString("en-IN")}</p>
+            <p className="text-xs text-[var(--text-muted)]">Current Value</p>
+            <p className="text-xl font-bold text-[var(--text-primary)]">₹{totalCurrent.toLocaleString("en-IN")}</p>
           </div>
           <div>
-            <p className="text-xs text-slate-500">Total Return</p>
-            <p className={`text-xl font-bold ${totalReturn >= 0 ? "text-emerald-300" : "text-red-300"}`}>
+            <p className="text-xs text-[var(--text-muted)]">Total Return</p>
+            <p className={`text-xl font-bold ${totalReturn >= 0 ? "text-[var(--accent-label)]" : "text-[var(--error-label)]"}`}>
               {totalReturn >= 0 ? "+" : ""}{totalReturn.toFixed(2)}%
             </p>
           </div>
           <div>
-            <p className="text-xs text-slate-500">P&L</p>
-            <p className={`text-xl font-bold ${totalCurrent - totalInvested >= 0 ? "text-emerald-300" : "text-red-300"}`}>
+            <p className="text-xs text-[var(--text-muted)]">P&L</p>
+            <p className={`text-xl font-bold ${totalCurrent - totalInvested >= 0 ? "text-[var(--accent-label)]" : "text-[var(--error-label)]"}`}>
               {totalCurrent - totalInvested >= 0 ? "+" : ""}₹{(totalCurrent - totalInvested).toLocaleString("en-IN")}
             </p>
           </div>
@@ -126,26 +131,26 @@ export function HoldingsPage() {
 
       {/* No holdings */}
       {enriched.length === 0 && (
-        <div className="rounded-2xl bg-black/20 p-5 text-sm text-slate-400">
+        <div className="rounded-2xl bg-[var(--background)]/80 p-5 text-sm text-[var(--text-secondary)]">
           No holdings yet. Buy stocks with CNC product type to see them here.
         </div>
       )}
 
       {/* Holdings list */}
       {enriched.map((h) => (
-        <article key={h.symbol} className="rounded-2xl border border-white/10 bg-[#08111a] p-4">
+        <article key={h.symbol} className="rounded-2xl border border-[var(--card-border)] bg-[var(--card-bg)] p-4">
           <div className="flex items-start justify-between gap-3">
             <div>
-              <p className="font-bold text-white">{h.title}</p>
-              <p className="text-xs text-slate-500">{h.symbol}</p>
+              <p className="font-bold text-[var(--text-primary)]">{h.title}</p>
+              <p className="text-xs text-[var(--text-muted)]">{h.symbol}</p>
             </div>
             <div className="text-right">
               {h.isLoading ? (
-                <div className="h-5 w-20 animate-pulse rounded bg-white/10" />
+                <div className="h-5 w-20 animate-pulse rounded bg-[var(--shimmer-bg)]" />
               ) : (
                 <>
-                  <p className="font-bold text-white">₹{h.cmp.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</p>
-                  <p className={`text-xs font-bold ${h.pctReturn >= 0 ? "text-emerald-300" : "text-red-300"}`}>
+                  <p className="font-bold text-[var(--text-primary)]">₹{h.cmp.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</p>
+                  <p className={`text-xs font-bold ${h.pctReturn >= 0 ? "text-[var(--accent-label)]" : "text-[var(--error-label)]"}`}>
                     {h.pctReturn >= 0 ? "+" : ""}{h.pctReturn.toFixed(2)}%
                   </p>
                 </>
@@ -153,23 +158,23 @@ export function HoldingsPage() {
             </div>
           </div>
 
-          <div className="mt-3 grid grid-cols-2 gap-2 rounded-xl bg-black/20 p-3 text-sm sm:grid-cols-4">
-            <p className="text-slate-500">Avg Buy <span className="block font-bold text-white">₹{h.avgBuyPrice.toLocaleString("en-IN")}</span></p>
-            <p className="text-slate-500">Qty <span className="block font-bold text-white">{h.quantity}</span></p>
-            <p className="text-slate-500">Invested <span className="block font-bold text-white">₹{h.investedAmount.toLocaleString("en-IN")}</span></p>
-            <p className="text-slate-500">Current <span className="block font-bold text-white">₹{h.currentValue.toLocaleString("en-IN")}</span></p>
+          <div className="mt-3 grid grid-cols-2 gap-2 rounded-xl bg-[var(--background)]/80 p-3 text-sm sm:grid-cols-4">
+            <p className="text-[var(--text-muted)]">Avg Buy <span className="block font-bold text-[var(--text-primary)]">₹{h.avgBuyPrice.toLocaleString("en-IN")}</span></p>
+            <p className="text-[var(--text-muted)]">Qty <span className="block font-bold text-[var(--text-primary)]">{h.quantity}</span></p>
+            <p className="text-[var(--text-muted)]">Invested <span className="block font-bold text-[var(--text-primary)]">₹{h.investedAmount.toLocaleString("en-IN")}</span></p>
+            <p className="text-[var(--text-muted)]">Current <span className="block font-bold text-[var(--text-primary)]">₹{h.currentValue.toLocaleString("en-IN")}</span></p>
           </div>
 
           <div className="mt-2 grid grid-cols-2 gap-2">
             <div className={`rounded-xl px-3 py-2 text-sm ${h.absoluteReturn >= 0 ? "bg-emerald-400/10" : "bg-red-400/10"}`}>
-              <p className="text-xs text-slate-500">Absolute P&L</p>
-              <p className={`font-bold ${h.absoluteReturn >= 0 ? "text-emerald-300" : "text-red-300"}`}>
+              <p className="text-xs text-[var(--text-muted)]">Absolute P&L</p>
+              <p className={`font-bold ${h.absoluteReturn >= 0 ? "text-[var(--accent-label)]" : "text-[var(--error-label)]"}`}>
                 {h.absoluteReturn >= 0 ? "+" : ""}₹{h.absoluteReturn.toFixed(2)}
               </p>
             </div>
-            <div className="rounded-xl bg-black/20 px-3 py-2 text-sm">
-              <p className="text-xs text-slate-500">XIRR (approx)</p>
-              <p className={`font-bold ${h.xirrValue >= 0 ? "text-emerald-300" : "text-red-300"}`}>
+            <div className="rounded-xl bg-[var(--background)]/80 px-3 py-2 text-sm">
+              <p className="text-xs text-[var(--text-muted)]">XIRR (approx)</p>
+              <p className={`font-bold ${h.xirrValue >= 0 ? "text-[var(--accent-label)]" : "text-[var(--error-label)]"}`}>
                 {h.xirrValue >= 0 ? "+" : ""}{h.xirrValue.toFixed(1)}% p.a.
               </p>
             </div>
@@ -178,8 +183,8 @@ export function HoldingsPage() {
       ))}
 
       {/* Corporate Actions note */}
-      <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4 text-sm text-slate-400">
-        <p className="font-semibold text-white">Corporate Actions</p>
+      <div className="rounded-2xl border border-[var(--card-border)] bg-[var(--card-bg)] p-4 text-sm text-[var(--text-secondary)]">
+        <p className="font-semibold text-[var(--text-primary)]">Corporate Actions</p>
         <p className="mt-1 text-xs">Bonus, Split, Rights, Dividends — tracked automatically when trades are recorded in CNC mode.</p>
       </div>
     </div>

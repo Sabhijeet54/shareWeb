@@ -22,6 +22,9 @@ export type TabKey =
   | "journal"
   | "strategy"
   | "brokerage"
+  | "globalMarkets"
+  | "news"
+  | "companyProfile"
   | "more";
 
 const primaryTabs: Array<{ key: TabKey; label: string; icon: IconType }> = [
@@ -42,7 +45,7 @@ export function BottomNav({
   onChange: (tab: TabKey) => void;
 }) {
   return (
-    <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-white/10 bg-[#091018]/95 px-2 pb-[max(env(safe-area-inset-bottom),0.75rem)] pt-2 backdrop-blur-xl md:hidden">
+    <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-[var(--card-border)] bg-[var(--nav-bg)]/95 px-2 pb-[max(env(safe-area-inset-bottom),0.75rem)] pt-2 backdrop-blur-xl md:hidden">
       <div className="mx-auto grid max-w-md grid-cols-7 gap-0.5">
         {primaryTabs.map((tab) => {
           const Icon = tab.icon;
@@ -54,8 +57,8 @@ export function BottomNav({
               onClick={() => onChange(tab.key)}
               className={`flex min-h-12 flex-col items-center justify-center gap-0.5 rounded-xl text-[10px] font-semibold transition ${
                 active
-                  ? "bg-emerald-400/15 text-emerald-300"
-                  : "text-slate-500 hover:text-slate-300"
+                  ? "bg-emerald-400/15 text-[var(--accent-label)]"
+                  : "text-[var(--text-muted)] hover:text-[var(--text-secondary)]"
               }`}
             >
               <Icon size={17} />

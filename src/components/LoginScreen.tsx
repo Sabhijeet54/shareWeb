@@ -26,53 +26,53 @@ export function LoginScreen() {
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-[#070b10] px-4 py-8 text-white">
+    <main className="flex min-h-screen items-center justify-center bg-[var(--background)] px-4 py-8 text-[var(--text-primary)]">
       <section className="w-full max-w-sm">
         <div className="mb-8">
           <div className="mb-5 flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-400 text-slate-950 shadow-[0_0_40px_rgba(52,211,153,0.25)]">
             <FiTrendingUp size={24} />
           </div>
-          <p className="text-sm font-medium uppercase tracking-[0.28em] text-emerald-300">
+          <p className="text-sm font-medium uppercase tracking-[0.28em] text-[var(--accent-label)]">
             Private trading desk
           </p>
           <h1 className="mt-3 text-4xl font-semibold tracking-tight">
             Welcome back
           </h1>
-          <p className="mt-3 text-sm leading-6 text-slate-400">
+          <p className="mt-3 text-sm leading-6 text-[var(--text-secondary)]">
             Login with the email and password shared by admin.
           </p>
         </div>
 
         <form
           onSubmit={handleSubmit}
-          className="rounded-[1.75rem] border border-white/10 bg-white/[0.04] p-5 shadow-2xl shadow-black/40 backdrop-blur"
+          className="rounded-[1.75rem] border border-[var(--card-border)] bg-[var(--card-bg)] p-5 shadow-2xl shadow-black/40 backdrop-blur"
         >
-          <label className="block text-sm font-medium text-slate-300">
+          <label className="block text-sm font-medium text-[var(--text-secondary)]">
             Email
           </label>
-          <div className="mt-2 flex items-center gap-3 rounded-2xl border border-white/10 bg-black/30 px-4">
-            <FiMail className="text-slate-500" />
+          <div className="mt-2 flex items-center gap-3 rounded-2xl border border-[var(--card-border)] bg-[var(--background)]/80 px-4">
+            <FiMail className="text-[var(--text-muted)]" />
             <input
               type="email"
               required
               value={email}
               onChange={(event) => setEmail(event.target.value)}
-              className="h-12 min-w-0 flex-1 bg-transparent text-sm text-white outline-none placeholder:text-slate-600"
+              className="h-12 min-w-0 flex-1 bg-transparent text-sm text-[var(--text-primary)] outline-none placeholder:text-[var(--text-muted)]"
               placeholder="user@example.com"
             />
           </div>
 
-          <label className="mt-4 block text-sm font-medium text-slate-300">
+          <label className="mt-4 block text-sm font-medium text-[var(--text-secondary)]">
             Password
           </label>
-          <div className="mt-2 flex items-center gap-3 rounded-2xl border border-white/10 bg-black/30 px-4">
-            <FiLock className="text-slate-500" />
+          <div className="mt-2 flex items-center gap-3 rounded-2xl border border-[var(--card-border)] bg-[var(--background)]/80 px-4">
+            <FiLock className="text-[var(--text-muted)]" />
             <input
               type="password"
               required
               value={password}
               onChange={(event) => setPassword(event.target.value)}
-              className="h-12 min-w-0 flex-1 bg-transparent text-sm text-white outline-none placeholder:text-slate-600"
+              className="h-12 min-w-0 flex-1 bg-transparent text-sm text-[var(--text-primary)] outline-none placeholder:text-[var(--text-muted)]"
               placeholder="Password"
             />
           </div>

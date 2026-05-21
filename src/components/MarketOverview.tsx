@@ -5,7 +5,7 @@ import { FiSearch, FiTrendingDown, FiTrendingUp, FiBell, FiX } from "react-icons
 import { addDoc, collection, doc, increment, runTransaction, serverTimestamp } from "firebase/firestore";
 import { useAuth } from "@/context/AuthContext";
 import { db } from "@/lib/firebase";
-import { watchlists, watchTabs, getContractMeta } from "@/lib/marketData";
+import { watchlists, watchTabs, getContractMeta, getDerivativeSpotSymbol } from "@/lib/marketData";
 import type { WatchlistKey } from "@/lib/marketData";
 import { useLiveQuotes } from "@/lib/useLiveQuotes";
 import { useDerivativeQuotes } from "@/lib/useDerivativeQuotes";
@@ -17,9 +17,12 @@ import type { Instrument } from "@/types/app";
 const DIRECT_SYMBOLS = Object.keys(YAHOO_SYMBOL_MAP);
 const allInstruments: Instrument[] = Object.values(watchlists).flat();
 
+<<<<<<< Updated upstream
 // Symbols needed to derive F&O prices
 const SPOT_SYMBOLS_FOR_FO = ["NIFTY", "BANKNIFTY", "FINNIFTY", "MIDCPNIFTY", "RELIANCE", "TCS", "HDFCBANK", "SBIN", "INFY"];
 
+=======
+>>>>>>> Stashed changes
 type SortKey = "default" | "price_asc" | "price_desc" | "change_asc" | "change_desc";
 
 function useCombinedQuotes(tabSymbols: string[]) {
@@ -30,7 +33,17 @@ function useCombinedQuotes(tabSymbols: string[]) {
     tabSymbols.some((s) => !DIRECT_SYMBOLS.includes(s)), [tabSymbols]);
 
   const directQuotes = useLiveQuotes(directSymbols, 12000);
-  const spotForFO = useLiveQuotes(needsSpot ? SPOT_SYMBOLS_FOR_FO : [], 12000);
+  const spotSymbolsForFO = useMemo(
+    () => [
+      ...new Set(
+        tabSymbols
+          .map((symbol) => getDerivativeSpotSymbol(symbol))
+          .filter((symbol): symbol is string => Boolean(symbol)),
+      ),
+    ],
+    [tabSymbols],
+  );
+  const spotForFO = useLiveQuotes(needsSpot ? spotSymbolsForFO : [], 12000);
   const derivativeQuotes = useDerivativeQuotes(spotForFO);
 
   return useMemo(() => {
@@ -152,16 +165,16 @@ export function MarketOverview({ balance }: { balance: number }) {
         <StockDetailModal instrument={modalInstrument} balance={balance} onClose={() => setModalInstrument(null)} />
       )}
 
-      <div className="rounded-[1.5rem] border border-white/10 bg-white/[0.04] p-4">
+      <div className="rounded-[1.5rem] border border-[var(--card-border)] bg-[var(--card-bg)] p-4">
         <div className="mb-3 flex items-center justify-between">
           <div>
-            <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.22em] text-emerald-300">
+            <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.22em] text-[var(--accent-label)]">
               <FiTrendingUp /> Watchlist · Live
             </p>
-            <h2 className="mt-1 text-xl font-semibold text-white">Market Data</h2>
+            <h2 className="mt-1 text-xl font-semibold text-[var(--text-primary)]">Market Data</h2>
           </div>
           <select value={sortKey} onChange={(e) => setSortKey(e.target.value as SortKey)}
-            className="rounded-xl bg-black/30 px-2 py-1 text-xs text-slate-300 outline-none">
+            className="rounded-xl bg-[var(--background)]/80 px-2 py-1 text-xs text-[var(--text-secondary)] outline-none">
             <option value="default">Default</option>
             <option value="price_asc">Price ↑</option>
             <option value="price_desc">Price ↓</option>
@@ -174,7 +187,7 @@ export function MarketOverview({ balance }: { balance: number }) {
         <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-2">
           {watchTabs.map((tab) => (
             <button key={tab.key} type="button" onClick={() => chooseTab(tab.key)}
-              className={`h-10 shrink-0 rounded-xl px-4 text-xs font-bold transition ${activeTab === tab.key ? "bg-emerald-400 text-slate-950" : "bg-black/25 text-slate-400"}`}>
+              className={`h-10 shrink-0 rounded-xl px-4 text-xs font-bold transition ${activeTab === tab.key ? "bg-emerald-400 text-slate-950" : "bg-[var(--background)]/80 text-[var(--text-secondary)]"}`}>
               {tab.label}
             </button>
           ))}
@@ -182,19 +195,19 @@ export function MarketOverview({ balance }: { balance: number }) {
 
         {/* Search */}
         <div className="relative mt-3">
-          <div className="flex items-center gap-3 rounded-2xl bg-black/30 px-4">
-            <FiSearch className="shrink-0 text-slate-500" />
+          <div className="flex items-center gap-3 rounded-2xl bg-[var(--background)]/80 px-4">
+            <FiSearch className="shrink-0 text-[var(--text-muted)]" />
             <input value={searchValue} onChange={(e) => setSearchValue(e.target.value)}
               placeholder="Search any stock, index, F&O symbol..."
-              className="h-12 min-w-0 flex-1 bg-transparent text-sm text-white outline-none placeholder:text-slate-600" />
+              className="h-12 min-w-0 flex-1 bg-transparent text-sm text-[var(--text-primary)] outline-none placeholder:text-[var(--text-muted)]" />
             {searchValue && (
               <button type="button" onClick={() => { setSearchValue(""); setSearchResults([]); }}>
-                <FiX className="text-slate-500" />
+                <FiX className="text-[var(--text-muted)]" />
               </button>
             )}
           </div>
           {searchResults.length > 0 && (
-            <div className="absolute left-0 right-0 top-14 z-20 rounded-2xl border border-white/10 bg-[#0d141d] p-2 shadow-2xl">
+            <div className="absolute left-0 right-0 top-14 z-20 rounded-2xl border border-[var(--card-border)] bg-[var(--dropdown-bg)] p-2 shadow-2xl">
               {searchResults.map((item) => (
                 <button key={item.symbol} type="button"
                   onClick={() => {
@@ -203,10 +216,10 @@ export function MarketOverview({ balance }: { balance: number }) {
                     selectInstrument(inst);
                     setModalInstrument(inst);
                   }}
-                  className="flex w-full items-center justify-between rounded-xl px-3 py-3 text-left hover:bg-white/5">
+                  className="flex w-full items-center justify-between rounded-xl px-3 py-3 text-left hover:bg-[var(--hover-bg)]">
                   <span>
-                    <span className="block text-sm font-bold text-white">{item.shortname}</span>
-                    <span className="text-xs text-slate-500">{item.symbol} · {item.exchange}</span>
+                    <span className="block text-sm font-bold text-[var(--text-primary)]">{item.shortname}</span>
+                    <span className="text-xs text-[var(--text-muted)]">{item.symbol} · {item.exchange}</span>
                   </span>
                 </button>
               ))}
@@ -227,30 +240,30 @@ export function MarketOverview({ balance }: { balance: number }) {
             return (
               <button key={item.symbol} type="button"
                 onClick={() => { selectInstrument(item); setModalInstrument(item); }}
-                className={`min-h-20 rounded-2xl border p-4 text-left transition ${active ? "border-emerald-300/60 bg-emerald-300/10" : "border-white/10 bg-black/20 hover:border-white/20"}`}>
+                className={`min-h-20 rounded-2xl border p-4 text-left transition ${active ? "border-emerald-300/60 bg-emerald-300/10" : "border-[var(--card-border)] bg-[var(--background)]/80 hover:border-white/20"}`}>
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0">
-                    <p className="truncate text-sm font-bold text-white">{item.title}</p>
-                    <p className="mt-0.5 text-xs text-slate-500">{item.subtitle}</p>
+                    <p className="truncate text-sm font-bold text-[var(--text-primary)]">{item.title}</p>
+                    <p className="mt-0.5 text-xs text-[var(--text-muted)]">{item.subtitle}</p>
                   </div>
                   <button type="button" onClick={(e) => { e.stopPropagation(); setAlertSymbol(item.symbol); setAlertPrice(""); }}
-                    className="mt-0.5 rounded-lg bg-black/30 p-1 text-slate-500 hover:text-amber-300">
+                    className="mt-0.5 rounded-lg bg-[var(--background)]/80 p-1 text-[var(--text-muted)] hover:text-[var(--warn-label)]">
                     <FiBell size={12} />
                   </button>
                 </div>
                 {isLoading ? (
                   <div className="mt-2 space-y-1">
-                    <div className="h-4 w-24 animate-pulse rounded bg-white/10" />
-                    <div className="h-3 w-14 animate-pulse rounded bg-white/5" />
+                    <div className="h-4 w-24 animate-pulse rounded bg-[var(--shimmer-bg)]" />
+                    <div className="h-3 w-14 animate-pulse rounded bg-[var(--hover-bg)]" />
                   </div>
                 ) : price === 0 ? (
-                  <p className="mt-2 text-xs text-slate-600">Price unavailable</p>
+                  <p className="mt-2 text-xs text-[var(--text-muted)]">Price unavailable</p>
                 ) : (
                   <div className="mt-2 flex items-baseline gap-2">
-                    <p className="text-sm font-bold text-white">
+                    <p className="text-sm font-bold text-[var(--text-primary)]">
                       ₹{price.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </p>
-                    <span className={`text-xs font-bold ${isUp ? "text-emerald-400" : "text-red-400"}`}>
+                    <span className={`text-xs font-bold ${isUp ? "text-[var(--green)]" : "text-[var(--red)]"}`}>
                       {isUp ? "+" : ""}{changePct.toFixed(2)}%
                     </span>
                   </div>
@@ -264,14 +277,14 @@ export function MarketOverview({ balance }: { balance: number }) {
       {/* Alert modal */}
       {alertSymbol && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={() => setAlertSymbol(null)}>
-          <div className="w-full max-w-sm rounded-[1.5rem] border border-white/10 bg-[#0d141d] p-6" onClick={(e) => e.stopPropagation()}>
-            <p className="text-lg font-bold text-white">Set Price Alert</p>
-            <p className="mt-1 text-sm text-slate-400">{alertSymbol}</p>
+          <div className="w-full max-w-sm rounded-[1.5rem] border border-[var(--card-border)] bg-[var(--card-bg)] p-6" onClick={(e) => e.stopPropagation()}>
+            <p className="text-lg font-bold text-[var(--text-primary)]">Set Price Alert</p>
+            <p className="mt-1 text-sm text-[var(--text-secondary)]">{alertSymbol}</p>
             <input type="number" value={alertPrice} onChange={(e) => setAlertPrice(e.target.value)}
-              placeholder="Target price (₹)" className="mt-4 h-12 w-full rounded-2xl border border-white/10 bg-black/30 px-4 text-sm text-white outline-none" />
+              placeholder="Target price (₹)" className="mt-4 h-12 w-full rounded-2xl border border-[var(--card-border)] bg-[var(--background)]/80 px-4 text-sm text-[var(--text-primary)] outline-none" />
             <div className="mt-4 flex gap-3">
               <button type="button" onClick={() => setAlertSymbol(null)}
-                className="h-11 flex-1 rounded-2xl border border-white/10 text-sm text-slate-400">Cancel</button>
+                className="h-11 flex-1 rounded-2xl border border-[var(--card-border)] text-sm text-[var(--text-secondary)]">Cancel</button>
               <button type="button" onClick={() => {
                 if (alertPrice && Number(alertPrice) > 0) {
                   setAlertsSet((prev) => [...prev, { symbol: alertSymbol, price: Number(alertPrice) }]);
@@ -285,14 +298,14 @@ export function MarketOverview({ balance }: { balance: number }) {
 
       {alertsSet.length > 0 && (
         <div className="rounded-[1.5rem] border border-amber-300/20 bg-amber-300/[0.05] p-4">
-          <p className="mb-3 text-sm font-bold text-amber-300">Active Alerts ({alertsSet.length})</p>
+          <p className="mb-3 text-sm font-bold text-[var(--warn-label)]">Active Alerts ({alertsSet.length})</p>
           <div className="space-y-2">
             {alertsSet.map((a, i) => (
-              <div key={i} className="flex items-center justify-between rounded-xl bg-black/20 px-3 py-2">
-                <span className="text-sm text-white">{a.symbol}</span>
-                <span className="text-sm text-amber-300">≥ ₹{a.price.toLocaleString("en-IN")}</span>
+              <div key={i} className="flex items-center justify-between rounded-xl bg-[var(--background)]/80 px-3 py-2">
+                <span className="text-sm text-[var(--text-primary)]">{a.symbol}</span>
+                <span className="text-sm text-[var(--warn-label)]">≥ ₹{a.price.toLocaleString("en-IN")}</span>
                 <button type="button" onClick={() => setAlertsSet((prev) => prev.filter((_, j) => j !== i))}
-                  className="text-slate-500 hover:text-red-400"><FiX size={14} /></button>
+                  className="text-[var(--text-muted)] hover:text-[var(--red)]"><FiX size={14} /></button>
               </div>
             ))}
           </div>
@@ -339,27 +352,27 @@ function MarketDataPanel({ instrument, quote }: { instrument: Instrument; quote:
   ];
 
   return (
-    <section className="rounded-[1.5rem] border border-white/10 bg-white/[0.04] p-5">
+    <section className="rounded-[1.5rem] border border-[var(--card-border)] bg-[var(--card-bg)] p-5">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.22em] text-emerald-300">Live Market Data</p>
-          <h2 className="mt-2 text-2xl font-bold text-white">{instrument.title}</h2>
-          <p className="mt-1 text-sm text-slate-500">{instrument.subtitle}</p>
+          <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--accent-label)]">Live Market Data</p>
+          <h2 className="mt-2 text-2xl font-bold text-[var(--text-primary)]">{instrument.title}</h2>
+          <p className="mt-1 text-sm text-[var(--text-muted)]">{instrument.subtitle}</p>
         </div>
         <div className="text-right">
           {isLoading ? (
             <div className="space-y-2">
-              <div className="h-8 w-32 animate-pulse rounded-xl bg-white/10" />
-              <div className="h-4 w-20 animate-pulse rounded bg-white/5" />
+              <div className="h-8 w-32 animate-pulse rounded-xl bg-[var(--shimmer-bg)]" />
+              <div className="h-4 w-20 animate-pulse rounded bg-[var(--hover-bg)]" />
             </div>
           ) : price === 0 ? (
-            <p className="text-sm text-slate-500">Loading live price...</p>
+            <p className="text-sm text-[var(--text-muted)]">Loading live price...</p>
           ) : (
             <>
-              <p className="text-2xl font-bold text-white">
+              <p className="text-2xl font-bold text-[var(--text-primary)]">
                 ₹{price.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
               </p>
-              <p className={`text-sm font-bold ${isUp ? "text-emerald-300" : "text-red-300"}`}>
+              <p className={`text-sm font-bold ${isUp ? "text-[var(--accent-label)]" : "text-[var(--error-label)]"}`}>
                 {isUp ? "+" : ""}{changePct.toFixed(2)}%
                 {quote && quote.change !== 0 && (
                   <span className="ml-1 text-xs opacity-60">({isUp ? "+" : ""}₹{quote.change.toFixed(2)})</span>
@@ -371,12 +384,12 @@ function MarketDataPanel({ instrument, quote }: { instrument: Instrument; quote:
       </div>
 
       {high > 0 && low > 0 && (
-        <div className="mt-5 rounded-2xl bg-black/25 p-4">
-          <div className="mb-2 flex justify-between text-xs text-slate-500">
+        <div className="mt-5 rounded-2xl bg-[var(--background)]/80 p-4">
+          <div className="mb-2 flex justify-between text-xs text-[var(--text-muted)]">
             <span>Low ₹{low.toLocaleString("en-IN")}</span>
             <span>High ₹{high.toLocaleString("en-IN")}</span>
           </div>
-          <div className="h-2 rounded-full bg-slate-800">
+          <div className="h-2 rounded-full bg-[var(--card-border)]">
             <div className="h-2 rounded-full bg-emerald-400 transition-all duration-500" style={{ width: `${position}%` }} />
           </div>
         </div>
@@ -384,9 +397,9 @@ function MarketDataPanel({ instrument, quote }: { instrument: Instrument; quote:
 
       <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
         {stats.map((stat) => (
-          <div key={stat.label} className="rounded-2xl bg-black/25 p-3">
-            <p className="text-xs text-slate-500">{stat.label}</p>
-            <p className="mt-1 text-sm font-bold text-white">{isLoading ? "—" : stat.value}</p>
+          <div key={stat.label} className="rounded-2xl bg-[var(--background)]/80 p-3">
+            <p className="text-xs text-[var(--text-muted)]">{stat.label}</p>
+            <p className="mt-1 text-sm font-bold text-[var(--text-primary)]">{isLoading ? "—" : stat.value}</p>
           </div>
         ))}
       </div>
@@ -451,21 +464,21 @@ function TradeTicket({ instrument, effectivePrice, balance }: { instrument: Inst
   }
 
   return (
-    <section className="rounded-[1.5rem] border border-white/10 bg-white/[0.04] p-4">
+    <section className="rounded-[1.5rem] border border-[var(--card-border)] bg-[var(--card-bg)] p-4">
       <div className="flex items-center justify-between gap-3 mb-4">
         <div>
-          <h2 className="text-lg font-semibold text-white">Trade Ticket</h2>
-          <p className="text-xs text-slate-500">Paper trading · wallet only</p>
+          <h2 className="text-lg font-semibold text-[var(--text-primary)]">Trade Ticket</h2>
+          <p className="text-xs text-[var(--text-muted)]">Paper trading · wallet only</p>
         </div>
-        <p className="text-right text-xs text-slate-400">
-          Wallet <span className="block text-base font-bold text-white">₹{balance.toLocaleString("en-IN")}</span>
+        <p className="text-right text-xs text-[var(--text-secondary)]">
+          Wallet <span className="block text-base font-bold text-[var(--text-primary)]">₹{balance.toLocaleString("en-IN")}</span>
         </p>
       </div>
 
       <div className="flex flex-wrap gap-2 mb-3">
         {(["MARKET", "LIMIT", "SL", "SL-M", "AMO", "GTT"] as const).map((t) => (
           <button key={t} type="button" onClick={() => setOrderType(t)}
-            className={`h-9 rounded-xl px-3 text-xs font-bold ${orderType === t ? "bg-emerald-400 text-slate-950" : "bg-black/30 text-slate-400"}`}>
+            className={`h-9 rounded-xl px-3 text-xs font-bold ${orderType === t ? "bg-emerald-400 text-slate-950" : "bg-[var(--background)]/80 text-[var(--text-secondary)]"}`}>
             {t}
           </button>
         ))}
@@ -473,57 +486,57 @@ function TradeTicket({ instrument, effectivePrice, balance }: { instrument: Inst
       <div className="flex gap-2 mb-4">
         {(["MIS", "CNC", "NRML"] as const).map((p) => (
           <button key={p} type="button" onClick={() => setProductType(p)}
-            className={`h-9 flex-1 rounded-xl text-xs font-bold ${productType === p ? "bg-indigo-500 text-white" : "bg-black/30 text-slate-400"}`}>
+            className={`h-9 flex-1 rounded-xl text-xs font-bold ${productType === p ? "bg-indigo-500 text-white" : "bg-[var(--background)]/80 text-[var(--text-secondary)]"}`}>
             {p}
           </button>
         ))}
       </div>
 
       <div className="grid grid-cols-[1fr_120px] gap-3 mb-3">
-        <div className="rounded-2xl bg-black/25 p-4">
-          <p className="text-xs text-slate-500">Instrument</p>
-          <p className="mt-1 font-bold text-white">{instrument.title}</p>
-          <p className="mt-1 text-sm text-emerald-300">
+        <div className="rounded-2xl bg-[var(--background)]/80 p-4">
+          <p className="text-xs text-[var(--text-muted)]">Instrument</p>
+          <p className="mt-1 font-bold text-[var(--text-primary)]">{instrument.title}</p>
+          <p className="mt-1 text-sm text-[var(--accent-label)]">
             {priceReady ? `₹${effectivePrice.toLocaleString("en-IN", { minimumFractionDigits: 2 })}` : "Loading..."}
           </p>
-          <p className="mt-1 text-xs text-slate-500">{meta.product} · {meta.tradableLabel}</p>
+          <p className="mt-1 text-xs text-[var(--text-muted)]">{meta.product} · {meta.tradableLabel}</p>
         </div>
-        <label className="rounded-2xl bg-black/25 p-3">
-          <span className="text-xs text-slate-500">{meta.lotSize > 1 ? "Lots" : "Qty"}</span>
+        <label className="rounded-2xl bg-[var(--background)]/80 p-3">
+          <span className="text-xs text-[var(--text-muted)]">{meta.lotSize > 1 ? "Lots" : "Qty"}</span>
           <input type="number" min="1" value={lots} onChange={(e) => setLots(e.target.value)}
-            className="mt-1 h-9 w-full bg-transparent text-lg font-bold text-white outline-none" />
-          {meta.lotSize > 1 && <p className="text-[10px] text-slate-600">max {maxLots}</p>}
+            className="mt-1 h-9 w-full bg-transparent text-lg font-bold text-[var(--text-primary)] outline-none" />
+          {meta.lotSize > 1 && <p className="text-[10px] text-[var(--text-muted)]">max {maxLots}</p>}
         </label>
       </div>
 
       {(orderType === "LIMIT" || orderType === "SL" || orderType === "SL-M") && (
-        <label className="mb-3 block rounded-2xl bg-black/25 p-3">
-          <span className="text-xs text-slate-500">Limit / trigger price</span>
+        <label className="mb-3 block rounded-2xl bg-[var(--background)]/80 p-3">
+          <span className="text-xs text-[var(--text-muted)]">Limit / trigger price</span>
           <input type="number" min="0" value={limitPrice} onChange={(e) => setLimitPrice(e.target.value)}
-            placeholder={String(effectivePrice)} className="mt-1 h-9 w-full bg-transparent text-lg font-bold text-white outline-none placeholder:text-slate-600" />
+            placeholder={String(effectivePrice)} className="mt-1 h-9 w-full bg-transparent text-lg font-bold text-[var(--text-primary)] outline-none placeholder:text-[var(--text-muted)]" />
         </label>
       )}
 
       <div className="grid grid-cols-2 gap-3 mb-3">
-        <label className="rounded-2xl bg-black/25 p-3">
-          <span className="text-xs text-slate-500">Target</span>
+        <label className="rounded-2xl bg-[var(--background)]/80 p-3">
+          <span className="text-xs text-[var(--text-muted)]">Target</span>
           <input type="number" min="0" value={target} onChange={(e) => setTarget(e.target.value)}
-            placeholder="Optional" className="mt-1 h-9 w-full bg-transparent text-lg font-bold text-white outline-none placeholder:text-slate-600" />
+            placeholder="Optional" className="mt-1 h-9 w-full bg-transparent text-lg font-bold text-[var(--text-primary)] outline-none placeholder:text-[var(--text-muted)]" />
         </label>
-        <label className="rounded-2xl bg-black/25 p-3">
-          <span className="text-xs text-slate-500">Stop Loss</span>
+        <label className="rounded-2xl bg-[var(--background)]/80 p-3">
+          <span className="text-xs text-[var(--text-muted)]">Stop Loss</span>
           <input type="number" min="0" value={stopLoss} onChange={(e) => setStopLoss(e.target.value)}
-            placeholder="Optional" className="mt-1 h-9 w-full bg-transparent text-lg font-bold text-white outline-none placeholder:text-slate-600" />
+            placeholder="Optional" className="mt-1 h-9 w-full bg-transparent text-lg font-bold text-[var(--text-primary)] outline-none placeholder:text-[var(--text-muted)]" />
         </label>
       </div>
 
       <div className="grid grid-cols-3 gap-2 text-sm mb-3">
-        <p className="rounded-2xl bg-black/20 p-3 text-slate-400">Qty <span className="block font-bold text-white">{qty.toLocaleString("en-IN")}</span></p>
-        <p className="rounded-2xl bg-black/20 p-3 text-slate-400">Value <span className="block font-bold text-white">₹{walletImpact.toLocaleString("en-IN")}</span></p>
-        <p className="rounded-2xl bg-black/20 p-3 text-slate-400">Charges <span className="block font-bold text-white">₹{charges.toLocaleString("en-IN")}</span></p>
+        <p className="rounded-2xl bg-[var(--background)]/80 p-3 text-[var(--text-secondary)]">Qty <span className="block font-bold text-[var(--text-primary)]">{qty.toLocaleString("en-IN")}</span></p>
+        <p className="rounded-2xl bg-[var(--background)]/80 p-3 text-[var(--text-secondary)]">Value <span className="block font-bold text-[var(--text-primary)]">₹{walletImpact.toLocaleString("en-IN")}</span></p>
+        <p className="rounded-2xl bg-[var(--background)]/80 p-3 text-[var(--text-secondary)]">Charges <span className="block font-bold text-[var(--text-primary)]">₹{charges.toLocaleString("en-IN")}</span></p>
       </div>
 
-      {message && <p className={`mb-3 text-sm ${message.startsWith("✅") ? "text-emerald-300" : "text-red-300"}`}>{message}</p>}
+      {message && <p className={`mb-3 text-sm ${message.startsWith("✅") ? "text-[var(--accent-label)]" : "text-[var(--error-label)]"}`}>{message}</p>}
 
       <div className="grid grid-cols-2 gap-3">
         <button type="button" disabled={busy || !priceReady} onClick={() => placeTrade("BUY")}
@@ -531,7 +544,7 @@ function TradeTicket({ instrument, effectivePrice, balance }: { instrument: Inst
           <FiTrendingUp /> {priceReady ? `BUY · ₹${buyDebit.toLocaleString("en-IN")}` : "Loading..."}
         </button>
         <button type="button" disabled={busy || !priceReady} onClick={() => placeTrade("SELL")}
-          className="flex h-12 items-center justify-center gap-2 rounded-2xl bg-red-400 text-sm font-bold text-white disabled:opacity-40">
+          className="flex h-12 items-center justify-center gap-2 rounded-2xl bg-red-400 text-sm font-bold text-[var(--text-primary)] disabled:opacity-40">
           <FiTrendingDown /> {priceReady ? `SELL · ₹${sellCredit.toLocaleString("en-IN")}` : "Loading..."}
         </button>
       </div>

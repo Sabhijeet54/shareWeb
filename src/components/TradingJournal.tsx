@@ -38,7 +38,11 @@ export function TradingJournal() {
 
   // Form state
   const [date, setDate] = useState(new Date().toISOString().split("T")[0]);
+<<<<<<< Updated upstream
   const [symbol, setSymbol] = useState("RELIANCE");
+=======
+  const [symbol, setSymbol] = useState("");
+>>>>>>> Stashed changes
   const [side, setSide] = useState<"BUY" | "SELL">("BUY");
   const [entryPrice, setEntryPrice] = useState("");
   const [exitPrice, setExitPrice] = useState("");
@@ -97,23 +101,23 @@ export function TradingJournal() {
     <div className="space-y-5">
       {/* Stats */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4">
-          <p className="text-xs text-slate-500">Total P&L</p>
-          <p className={`text-xl font-bold ${totalPnl >= 0 ? "text-emerald-300" : "text-red-300"}`}>
+        <div className="rounded-2xl border border-[var(--card-border)] bg-[var(--card-bg)] p-4">
+          <p className="text-xs text-[var(--text-muted)]">Total P&L</p>
+          <p className={`text-xl font-bold ${totalPnl >= 0 ? "text-[var(--accent-label)]" : "text-[var(--error-label)]"}`}>
             {totalPnl >= 0 ? "+" : ""}₹{totalPnl.toFixed(2)}
           </p>
         </div>
-        <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4">
-          <p className="text-xs text-slate-500">Win Rate</p>
-          <p className="text-xl font-bold text-white">{winRate}%</p>
+        <div className="rounded-2xl border border-[var(--card-border)] bg-[var(--card-bg)] p-4">
+          <p className="text-xs text-[var(--text-muted)]">Win Rate</p>
+          <p className="text-xl font-bold text-[var(--text-primary)]">{winRate}%</p>
         </div>
-        <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4">
-          <p className="text-xs text-slate-500">Avg Win</p>
-          <p className="text-xl font-bold text-emerald-300">₹{avgWin.toFixed(0)}</p>
+        <div className="rounded-2xl border border-[var(--card-border)] bg-[var(--card-bg)] p-4">
+          <p className="text-xs text-[var(--text-muted)]">Avg Win</p>
+          <p className="text-xl font-bold text-[var(--accent-label)]">₹{avgWin.toFixed(0)}</p>
         </div>
-        <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4">
-          <p className="text-xs text-slate-500">Avg Loss</p>
-          <p className="text-xl font-bold text-red-300">₹{Math.abs(avgLoss).toFixed(0)}</p>
+        <div className="rounded-2xl border border-[var(--card-border)] bg-[var(--card-bg)] p-4">
+          <p className="text-xs text-[var(--text-muted)]">Avg Loss</p>
+          <p className="text-xl font-bold text-[var(--error-label)]">₹{Math.abs(avgLoss).toFixed(0)}</p>
         </div>
       </div>
 
@@ -124,68 +128,68 @@ export function TradingJournal() {
 
       {/* Entry form */}
       {showForm && (
-        <div className="rounded-[1.5rem] border border-white/10 bg-white/[0.04] p-5 space-y-4">
-          <p className="text-sm font-bold text-white flex items-center gap-2"><FiBook /> New Entry</p>
+        <div className="rounded-[1.5rem] border border-[var(--card-border)] bg-[var(--card-bg)] p-5 space-y-4">
+          <p className="text-sm font-bold text-[var(--text-primary)] flex items-center gap-2"><FiBook /> New Entry</p>
 
           <div className="grid grid-cols-2 gap-3">
-            <label className="rounded-xl bg-black/25 p-3">
-              <span className="text-xs text-slate-500">Date</span>
+            <label className="rounded-xl bg-[var(--background)]/80 p-3">
+              <span className="text-xs text-[var(--text-muted)]">Date</span>
               <input type="date" value={date} onChange={(e) => setDate(e.target.value)}
-                className="mt-1 w-full bg-transparent text-sm font-bold text-white outline-none" />
+                className="mt-1 w-full bg-transparent text-sm font-bold text-[var(--text-primary)] outline-none" />
             </label>
-            <label className="rounded-xl bg-black/25 p-3">
-              <span className="text-xs text-slate-500">Symbol</span>
+            <label className="rounded-xl bg-[var(--background)]/80 p-3">
+              <span className="text-xs text-[var(--text-muted)]">Symbol</span>
               <input value={symbol} onChange={(e) => setSymbol(e.target.value.toUpperCase())}
-                className="mt-1 w-full bg-transparent text-sm font-bold text-white outline-none" />
+                className="mt-1 w-full bg-transparent text-sm font-bold text-[var(--text-primary)] outline-none" />
             </label>
           </div>
 
           <div className="grid grid-cols-2 gap-2">
             {(["BUY", "SELL"] as const).map((s) => (
               <button key={s} type="button" onClick={() => setSide(s)}
-                className={`h-10 rounded-xl text-sm font-bold ${side === s ? (s === "BUY" ? "bg-emerald-400 text-slate-950" : "bg-red-400 text-white") : "bg-black/30 text-slate-400"}`}>
+                className={`h-10 rounded-xl text-sm font-bold ${side === s ? (s === "BUY" ? "bg-emerald-400 text-slate-950" : "bg-red-400 text-white") : "bg-[var(--background)]/80 text-[var(--text-secondary)]"}`}>
                 {s}
               </button>
             ))}
           </div>
 
           <div className="grid grid-cols-3 gap-3">
-            <label className="rounded-xl bg-black/25 p-3">
-              <span className="text-xs text-slate-500">Entry Price</span>
+            <label className="rounded-xl bg-[var(--background)]/80 p-3">
+              <span className="text-xs text-[var(--text-muted)]">Entry Price</span>
               <input type="number" value={entryPrice} onChange={(e) => setEntryPrice(e.target.value)}
-                className="mt-1 w-full bg-transparent text-sm font-bold text-white outline-none" />
+                className="mt-1 w-full bg-transparent text-sm font-bold text-[var(--text-primary)] outline-none" />
             </label>
-            <label className="rounded-xl bg-black/25 p-3">
-              <span className="text-xs text-slate-500">Exit Price</span>
+            <label className="rounded-xl bg-[var(--background)]/80 p-3">
+              <span className="text-xs text-[var(--text-muted)]">Exit Price</span>
               <input type="number" value={exitPrice} onChange={(e) => setExitPrice(e.target.value)}
-                className="mt-1 w-full bg-transparent text-sm font-bold text-white outline-none" />
+                className="mt-1 w-full bg-transparent text-sm font-bold text-[var(--text-primary)] outline-none" />
             </label>
-            <label className="rounded-xl bg-black/25 p-3">
-              <span className="text-xs text-slate-500">Qty</span>
+            <label className="rounded-xl bg-[var(--background)]/80 p-3">
+              <span className="text-xs text-[var(--text-muted)]">Qty</span>
               <input type="number" value={qty} onChange={(e) => setQty(e.target.value)}
-                className="mt-1 w-full bg-transparent text-sm font-bold text-white outline-none" />
+                className="mt-1 w-full bg-transparent text-sm font-bold text-[var(--text-primary)] outline-none" />
             </label>
           </div>
 
           {Number(exitPrice) > 0 && (
-            <div className={`rounded-xl px-3 py-2 text-sm font-bold ${pnl >= 0 ? "bg-emerald-400/10 text-emerald-300" : "bg-red-400/10 text-red-300"}`}>
+            <div className={`rounded-xl px-3 py-2 text-sm font-bold ${pnl >= 0 ? "bg-emerald-400/10 text-[var(--accent-label)]" : "bg-red-400/10 text-[var(--error-label)]"}`}>
               P&L: {pnl >= 0 ? "+" : ""}₹{pnl.toFixed(2)}
             </div>
           )}
 
           <div className="grid grid-cols-2 gap-3">
-            <label className="rounded-xl bg-black/25 p-3">
-              <span className="text-xs text-slate-500">Emotion</span>
+            <label className="rounded-xl bg-[var(--background)]/80 p-3">
+              <span className="text-xs text-[var(--text-muted)]">Emotion</span>
               <select value={emotion} onChange={(e) => setEmotion(e.target.value as typeof EMOTIONS[number])}
-                className="mt-1 w-full bg-transparent text-sm font-bold text-white outline-none">
-                {EMOTIONS.map((em) => <option key={em} className="bg-slate-950">{em}</option>)}
+                className="mt-1 w-full bg-transparent text-sm font-bold text-[var(--text-primary)] outline-none">
+                {EMOTIONS.map((em) => <option key={em} className="bg-[var(--background)]">{em}</option>)}
               </select>
             </label>
-            <label className="rounded-xl bg-black/25 p-3">
-              <span className="text-xs text-slate-500">Strategy</span>
+            <label className="rounded-xl bg-[var(--background)]/80 p-3">
+              <span className="text-xs text-[var(--text-muted)]">Strategy</span>
               <select value={strategy} onChange={(e) => setStrategy(e.target.value)}
-                className="mt-1 w-full bg-transparent text-sm font-bold text-white outline-none">
-                {STRATEGIES.map((s) => <option key={s} className="bg-slate-950">{s}</option>)}
+                className="mt-1 w-full bg-transparent text-sm font-bold text-[var(--text-primary)] outline-none">
+                {STRATEGIES.map((s) => <option key={s} className="bg-[var(--background)]">{s}</option>)}
               </select>
             </label>
           </div>
@@ -195,10 +199,10 @@ export function TradingJournal() {
             { label: "Mistakes Made", value: mistakes, set: setMistakes },
             { label: "Lessons Learned", value: lessons, set: setLessons },
           ].map(({ label, value, set }) => (
-            <label key={label} className="block rounded-xl bg-black/25 p-3">
-              <span className="text-xs text-slate-500">{label}</span>
+            <label key={label} className="block rounded-xl bg-[var(--background)]/80 p-3">
+              <span className="text-xs text-[var(--text-muted)]">{label}</span>
               <textarea value={value} onChange={(e) => set(e.target.value)} rows={2}
-                className="mt-1 w-full resize-none bg-transparent text-sm text-white outline-none placeholder:text-slate-600"
+                className="mt-1 w-full resize-none bg-transparent text-sm text-[var(--text-primary)] outline-none placeholder:text-[var(--text-muted)]"
                 placeholder="Write here..." />
             </label>
           ))}
@@ -213,35 +217,35 @@ export function TradingJournal() {
       {/* Entries list */}
       <div className="space-y-3">
         {entries.length === 0 ? (
-          <p className="rounded-2xl bg-black/20 p-4 text-sm text-slate-400">No journal entries. Start documenting your trades to improve.</p>
+          <p className="rounded-2xl bg-[var(--background)]/80 p-4 text-sm text-[var(--text-secondary)]">No journal entries. Start documenting your trades to improve.</p>
         ) : entries.map((e) => (
-          <article key={e.id} className="rounded-2xl border border-white/10 bg-[#08111a] p-4">
+          <article key={e.id} className="rounded-2xl border border-[var(--card-border)] bg-[var(--card-bg)] p-4">
             <div className="flex items-start justify-between gap-3">
               <div>
                 <div className="flex items-center gap-2">
-                  <span className={`rounded-full px-2 py-0.5 text-xs font-bold ${e.side === "BUY" ? "bg-emerald-400/15 text-emerald-300" : "bg-red-400/15 text-red-300"}`}>{e.side}</span>
-                  <p className="font-bold text-white">{e.symbol}</p>
-                  <span className="text-xs text-slate-500">{e.date}</span>
+                  <span className={`rounded-full px-2 py-0.5 text-xs font-bold ${e.side === "BUY" ? "bg-emerald-400/15 text-[var(--accent-label)]" : "bg-red-400/15 text-[var(--error-label)]"}`}>{e.side}</span>
+                  <p className="font-bold text-[var(--text-primary)]">{e.symbol}</p>
+                  <span className="text-xs text-[var(--text-muted)]">{e.date}</span>
                 </div>
-                <p className="mt-1 text-xs text-slate-500">{e.strategy} · {e.emotion}</p>
+                <p className="mt-1 text-xs text-[var(--text-muted)]">{e.strategy} · {e.emotion}</p>
               </div>
               <div className="flex items-center gap-2">
-                <p className={`font-bold ${e.pnl >= 0 ? "text-emerald-300" : "text-red-300"}`}>
+                <p className={`font-bold ${e.pnl >= 0 ? "text-[var(--accent-label)]" : "text-[var(--error-label)]"}`}>
                   {e.pnl >= 0 ? "+" : ""}₹{e.pnl.toFixed(2)}
                 </p>
-                <button type="button" onClick={() => deleteEntry(e.id)} className="text-slate-600 hover:text-red-400">
+                <button type="button" onClick={() => deleteEntry(e.id)} className="text-[var(--text-muted)] hover:text-[var(--red)]">
                   <FiTrash2 size={14} />
                 </button>
               </div>
             </div>
             <div className="mt-2 grid grid-cols-3 gap-2 text-xs">
-              <p className="text-slate-500">Entry <span className="block font-bold text-white">₹{e.entryPrice}</span></p>
-              <p className="text-slate-500">Exit <span className="block font-bold text-white">{e.exitPrice > 0 ? `₹${e.exitPrice}` : "Open"}</span></p>
-              <p className="text-slate-500">Qty <span className="block font-bold text-white">{e.qty}</span></p>
+              <p className="text-[var(--text-muted)]">Entry <span className="block font-bold text-[var(--text-primary)]">₹{e.entryPrice}</span></p>
+              <p className="text-[var(--text-muted)]">Exit <span className="block font-bold text-[var(--text-primary)]">{e.exitPrice > 0 ? `₹${e.exitPrice}` : "Open"}</span></p>
+              <p className="text-[var(--text-muted)]">Qty <span className="block font-bold text-[var(--text-primary)]">{e.qty}</span></p>
             </div>
-            {e.notes && <p className="mt-2 text-xs text-slate-400">📝 {e.notes}</p>}
-            {e.mistakes && <p className="mt-1 text-xs text-red-400">❌ {e.mistakes}</p>}
-            {e.lessons && <p className="mt-1 text-xs text-emerald-400">✅ {e.lessons}</p>}
+            {e.notes && <p className="mt-2 text-xs text-[var(--text-secondary)]">📝 {e.notes}</p>}
+            {e.mistakes && <p className="mt-1 text-xs text-[var(--red)]">❌ {e.mistakes}</p>}
+            {e.lessons && <p className="mt-1 text-xs text-[var(--green)]">✅ {e.lessons}</p>}
           </article>
         ))}
       </div>

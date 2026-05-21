@@ -68,43 +68,43 @@ export function AdminPanel() {
   return (
     <section className="space-y-3 rounded-[1.5rem] border border-amber-300/20 bg-amber-300/[0.06] p-5">
       <div>
-        <p className="text-xs font-semibold uppercase tracking-[0.24em] text-amber-200">
+        <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[var(--warn-label-dim)]">
           Admin panel
         </p>
-        <h2 className="mt-2 text-xl font-semibold text-white">
+        <h2 className="mt-2 text-xl font-semibold text-[var(--text-primary)]">
           Payment Requests
         </h2>
       </div>
 
       {payments.length === 0 ? (
-        <p className="rounded-2xl bg-black/20 p-4 text-sm text-slate-400">
+        <p className="rounded-2xl bg-[var(--background)]/80 p-4 text-sm text-[var(--text-secondary)]">
           No payment requests yet.
         </p>
       ) : (
         payments.map((payment) => (
           <article
             key={payment.id}
-            className="rounded-2xl border border-white/10 bg-[#08111a] p-4"
+            className="rounded-2xl border border-[var(--card-border)] bg-[var(--card-bg)] p-4"
           >
             <div className="flex items-start justify-between gap-3">
               <div>
-                <p className="text-lg font-bold text-white">
+                <p className="text-lg font-bold text-[var(--text-primary)]">
                   Rs. {payment.amount.toLocaleString("en-IN")}
                 </p>
-                <p className="mt-1 text-xs text-slate-400">
+                <p className="mt-1 text-xs text-[var(--text-secondary)]">
                   {payment.userEmail}
                 </p>
-                <p className="mt-1 text-xs text-slate-500">
+                <p className="mt-1 text-xs text-[var(--text-muted)]">
                   UTR: {payment.utr}
                 </p>
               </div>
               <span
                 className={`rounded-full px-3 py-1 text-xs font-bold capitalize ${
                   payment.status === "approved"
-                    ? "bg-emerald-400/15 text-emerald-300"
+                    ? "bg-emerald-400/15 text-[var(--accent-label)]"
                     : payment.status === "rejected"
-                      ? "bg-red-400/15 text-red-300"
-                      : "bg-amber-300/15 text-amber-200"
+                      ? "bg-red-400/15 text-[var(--error-label)]"
+                      : "bg-amber-300/15 text-[var(--warn-label-dim)]"
                 }`}
               >
                 {payment.status}
@@ -126,7 +126,7 @@ export function AdminPanel() {
                     type="button"
                     disabled={busyId === payment.id}
                     onClick={() => reject(payment)}
-                    className="flex h-10 items-center gap-2 rounded-xl bg-red-400 px-3 text-sm font-bold text-white disabled:opacity-60"
+                    className="flex h-10 items-center gap-2 rounded-xl bg-red-400 px-3 text-sm font-bold text-[var(--text-primary)] disabled:opacity-60"
                   >
                     <FiX /> Reject
                   </button>

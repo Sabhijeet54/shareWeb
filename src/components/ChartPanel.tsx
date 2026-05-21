@@ -12,7 +12,7 @@ import {
   type Time,
   type HistogramData,
 } from "lightweight-charts";
-import { FiMaximize2, FiMinimize2, FiRefreshCw } from "react-icons/fi";
+import { FiMaximize2, FiMinimize2, FiRefreshCw, FiArrowLeft } from "react-icons/fi";
 import { CHART_INTERVALS } from "@/lib/symbolMap";
 import { useChartData, type OHLCVBar } from "@/lib/useChartData";
 import { useLiveSingleQuote } from "@/lib/useLiveQuotes";
@@ -135,14 +135,14 @@ const INDICATOR_OPTIONS: Array<{ key: IndicatorKey; label: string }> = [
 
 type ChartType = "Candlestick" | "Line" | "Bar";
 
-export function ChartPanel({ symbol }: { symbol: string }) {
+export function ChartPanel({ symbol, onBack }: { symbol: string; onBack?: () => void }) {
   const [interval, setInterval] = useState<(typeof CHART_INTERVALS)[number]>(CHART_INTERVALS[1]);
   const [chartType, setChartType] = useState<ChartType>("Candlestick");
   const [indicators, setIndicators] = useState<Set<IndicatorKey>>(new Set(["EMA20", "EMA50"]));
   const [fullscreen, setFullscreen] = useState(false);
 
   const { bars, isLoading, isError } = useChartData(symbol, interval.value, interval.range);
-  const liveQuote = useLiveSingleQuote(symbol, 15000);
+  const liveQuote = useLiveSingleQuote(symbol, 2500);
 
   const containerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
@@ -336,19 +336,19 @@ export function ChartPanel({ symbol }: { symbol: string }) {
     });
   }
 
-  const priceColor = liveQuote && liveQuote.changePct >= 0 ? "text-emerald-300" : "text-red-300";
+  const priceColor = liveQuote && liveQuote.changePct >= 0 ? "text-[var(--accent-label)]" : "text-[var(--error-label)]";
 
   return (
-    <div className={`space-y-3 ${fullscreen ? "fixed inset-0 z-50 overflow-y-auto bg-[#070b10] p-4" : ""}`}>
-      <div className="rounded-[1.5rem] border border-white/10 bg-white/[0.04] p-4">
+    <div className={`space-y-3 ${fullscreen ? "fixed inset-0 z-50 overflow-y-auto bg-[var(--background)] p-4" : ""}`}>
+      <div className="rounded-[1.5rem] border border-[var(--card-border)] bg-[var(--card-bg)] p-4">
         {/* Header */}
         <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-widest text-emerald-300">Live Chart</p>
-            <h2 className="mt-1 text-xl font-bold text-white">{symbol}</h2>
+            <p className="text-xs font-semibold uppercase tracking-widest text-[var(--accent-label)]">Live Chart</p>
+            <h2 className="mt-1 text-xl font-bold text-[var(--text-primary)]">{symbol}</h2>
             {liveQuote && !liveQuote.isLoading && (
               <div className="mt-1 flex items-baseline gap-2">
-                <span className="text-2xl font-bold text-white">
+                <span className="text-2xl font-bold text-[var(--text-primary)]">
                   ₹{liveQuote.price.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
                 </span>
                 <span className={`text-sm font-bold ${priceColor}`}>
@@ -359,8 +359,13 @@ export function ChartPanel({ symbol }: { symbol: string }) {
             )}
           </div>
           <div className="flex gap-2">
-            {isLoading && <FiRefreshCw className="animate-spin text-slate-400" />}
-            <button type="button" onClick={() => setFullscreen((f) => !f)} className="rounded-xl bg-white/5 p-2 text-slate-400">
+            {onBack && (
+              <button type="button" onClick={onBack} className="rounded-xl bg-[var(--hover-bg)] p-2 text-[var(--text-secondary)] hover:text-[var(--green)] transition-colors" title="Back">
+                <FiArrowLeft size={18} />
+              </button>
+            )}
+            {isLoading && <FiRefreshCw className="animate-spin text-[var(--text-secondary)]" />}
+            <button type="button" onClick={() => setFullscreen((f) => !f)} className="rounded-xl bg-[var(--hover-bg)] p-2 text-[var(--text-secondary)]">
               {fullscreen ? <FiMinimize2 /> : <FiMaximize2 />}
             </button>
           </div>
@@ -370,7 +375,7 @@ export function ChartPanel({ symbol }: { symbol: string }) {
         <div className="mb-3 flex gap-2">
           {(["Candlestick", "Line", "Bar"] as ChartType[]).map((t) => (
             <button key={t} type="button" onClick={() => setChartType(t)}
-              className={`h-8 rounded-xl px-3 text-xs font-bold ${chartType === t ? "bg-emerald-400 text-slate-950" : "bg-black/30 text-slate-400"}`}>
+              className={`h-8 rounded-xl px-3 text-xs font-bold ${chartType === t ? "bg-emerald-400 text-slate-950" : "bg-[var(--background)]/80 text-[var(--text-secondary)]"}`}>
               {t}
             </button>
           ))}
@@ -380,7 +385,7 @@ export function ChartPanel({ symbol }: { symbol: string }) {
         <div className="mb-3 flex flex-wrap gap-2">
           {CHART_INTERVALS.map((tf) => (
             <button key={tf.label} type="button" onClick={() => setInterval(tf)}
-              className={`h-8 rounded-xl px-3 text-xs font-bold ${interval.label === tf.label ? "bg-emerald-400 text-slate-950" : "bg-black/30 text-slate-400"}`}>
+              className={`h-8 rounded-xl px-3 text-xs font-bold ${interval.label === tf.label ? "bg-emerald-400 text-slate-950" : "bg-[var(--background)]/80 text-[var(--text-secondary)]"}`}>
               {tf.label}
             </button>
           ))}
@@ -390,7 +395,7 @@ export function ChartPanel({ symbol }: { symbol: string }) {
         <div className="mb-4 flex flex-wrap gap-2">
           {INDICATOR_OPTIONS.map((ind) => (
             <button key={ind.key} type="button" onClick={() => toggleIndicator(ind.key)}
-              className={`h-7 rounded-lg px-2 text-[11px] font-bold ${indicators.has(ind.key) ? "bg-indigo-500 text-white" : "bg-black/30 text-slate-500"}`}>
+              className={`h-7 rounded-lg px-2 text-[11px] font-bold ${indicators.has(ind.key) ? "bg-indigo-500 text-white" : "bg-[var(--background)]/80 text-[var(--text-muted)]"}`}>
               {ind.label}
             </button>
           ))}
@@ -398,7 +403,7 @@ export function ChartPanel({ symbol }: { symbol: string }) {
 
         {/* Main chart */}
         {isError ? (
-          <div className="flex h-48 items-center justify-center text-sm text-red-400">
+          <div className="flex h-48 items-center justify-center text-sm text-[var(--red)]">
             Failed to load chart. Check connection.
           </div>
         ) : (
@@ -408,7 +413,7 @@ export function ChartPanel({ symbol }: { symbol: string }) {
         {/* RSI sub-chart */}
         {indicators.has("RSI") && bars.length > 0 && (
           <div className="mt-3">
-            <p className="mb-1 text-[11px] font-bold text-purple-300">RSI (14)</p>
+            <p className="mb-1 text-[11px] font-bold text-[var(--info-label)]">RSI (14)</p>
             <div ref={rsiContainerRef} className="w-full" />
           </div>
         )}
@@ -416,7 +421,7 @@ export function ChartPanel({ symbol }: { symbol: string }) {
         {/* MACD sub-chart */}
         {indicators.has("MACD") && bars.length > 0 && (
           <div className="mt-3">
-            <p className="mb-1 text-[11px] font-bold text-blue-300">MACD (12,26,9)</p>
+            <p className="mb-1 text-[11px] font-bold text-[var(--info-label)]">MACD (12,26,9)</p>
             <div ref={macdContainerRef} className="w-full" />
           </div>
         )}
@@ -432,9 +437,9 @@ export function ChartPanel({ symbol }: { symbol: string }) {
               { label: "52W High", value: `₹${liveQuote.weekHigh52.toLocaleString("en-IN")}` },
               { label: "52W Low", value: `₹${liveQuote.weekLow52.toLocaleString("en-IN")}` },
             ].map((stat) => (
-              <div key={stat.label} className="rounded-xl bg-black/25 p-2">
-                <p className="text-slate-500">{stat.label}</p>
-                <p className="mt-0.5 font-bold text-white">{stat.value}</p>
+              <div key={stat.label} className="rounded-xl bg-[var(--background)]/80 p-2">
+                <p className="text-[var(--text-muted)]">{stat.label}</p>
+                <p className="mt-0.5 font-bold text-[var(--text-primary)]">{stat.value}</p>
               </div>
             ))}
           </div>

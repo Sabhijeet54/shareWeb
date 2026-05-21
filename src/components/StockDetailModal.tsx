@@ -230,30 +230,30 @@ export function StockDetailModal({ instrument, balance, onClose }: Props) {
       <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onClose} />
 
       {/* Sheet */}
-      <div className="relative z-10 max-h-[95vh] w-full max-w-lg overflow-y-auto rounded-t-[2rem] border border-white/10 bg-[#0a1118] pb-8 shadow-2xl sm:rounded-[2rem]">
-        <div className="mx-auto mt-3 h-1 w-10 rounded-full bg-white/20" />
+      <div className="relative z-10 max-h-[95vh] w-full max-w-lg overflow-y-auto rounded-t-[2rem] border border-[var(--card-border)] bg-[var(--card-bg)] pb-8 shadow-2xl sm:rounded-[2rem]">
+        <div className="mx-auto mt-3 h-1 w-10 rounded-full bg-[var(--divider)]" />
 
         {/* Header */}
         <div className="flex items-start justify-between gap-2 px-5 pt-5">
           <div>
-            <h2 className="text-xl font-bold text-white">{instrument.title}</h2>
-            <p className="text-xs text-slate-500">{instrument.subtitle} · {meta.product}</p>
+            <h2 className="text-xl font-bold text-[var(--text-primary)]">{instrument.title}</h2>
+            <p className="text-xs text-[var(--text-muted)]">{instrument.subtitle} · {meta.product}</p>
             {/* Show held qty badge */}
             {!heldLoading && (
-              <span className={`mt-1 inline-block rounded-full px-2 py-0.5 text-[10px] font-bold ${heldQty > 0 ? "bg-emerald-400/15 text-emerald-300" : "bg-white/5 text-slate-500"}`}>
+              <span className={`mt-1 inline-block rounded-full px-2 py-0.5 text-[10px] font-bold ${heldQty > 0 ? "bg-emerald-400/15 text-[var(--accent-label)]" : "bg-[var(--hover-bg)] text-[var(--text-muted)]"}`}>
                 {heldQty > 0 ? `Holding: ${heldQty} shares` : "Not holding"}
               </span>
             )}
           </div>
           <div className="flex-1 text-right">
             {quote?.isLoading ? (
-              <div className="h-7 w-24 animate-pulse rounded-xl bg-white/10 ml-auto" />
+              <div className="h-7 w-24 animate-pulse rounded-xl bg-[var(--shimmer-bg)] ml-auto" />
             ) : (
               <>
-                <p className="text-2xl font-bold text-white">
+                <p className="text-2xl font-bold text-[var(--text-primary)]">
                   ₹{livePrice.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
                 </p>
-                <p className={`text-sm font-bold ${isUp ? "text-emerald-300" : "text-red-300"}`}>
+                <p className={`text-sm font-bold ${isUp ? "text-[var(--accent-label)]" : "text-[var(--error-label)]"}`}>
                   {isUp ? "+" : ""}{liveChangePct.toFixed(2)}%
                   {quote && !quote.isLoading && (
                     <span className="ml-1 opacity-60 text-xs">
@@ -264,7 +264,7 @@ export function StockDetailModal({ instrument, balance, onClose }: Props) {
               </>
             )}
           </div>
-          <button type="button" onClick={onClose} className="rounded-xl bg-white/5 p-2 text-slate-400 hover:bg-white/10">
+          <button type="button" onClick={onClose} className="rounded-xl bg-[var(--hover-bg)] p-2 text-[var(--text-secondary)] hover:bg-[var(--shimmer-bg)]">
             <FiX />
           </button>
         </div>
@@ -284,9 +284,9 @@ export function StockDetailModal({ instrument, balance, onClose }: Props) {
                 : instrument.volume,
             },
           ].map((s) => (
-            <div key={s.label} className="rounded-xl bg-black/25 p-2 text-center">
-              <p className="text-[10px] text-slate-500">{s.label}</p>
-              <p className="text-xs font-bold text-white">{s.value}</p>
+            <div key={s.label} className="rounded-xl bg-[var(--background)]/80 p-2 text-center">
+              <p className="text-[10px] text-[var(--text-muted)]">{s.label}</p>
+              <p className="text-xs font-bold text-[var(--text-primary)]">{s.value}</p>
             </div>
           ))}
         </div>
@@ -294,23 +294,23 @@ export function StockDetailModal({ instrument, balance, onClose }: Props) {
         {/* Mini chart */}
         <div className="mt-4 px-5">
           <div className="mb-2 flex items-center gap-2">
-            <FiBarChart2 size={13} className="text-emerald-300" />
-            <span className="text-xs font-semibold text-emerald-300">LIVE CHART</span>
+            <FiBarChart2 size={13} className="text-[var(--accent-label)]" />
+            <span className="text-xs font-semibold text-[var(--accent-label)]">LIVE CHART</span>
             <div className="ml-auto flex gap-1">
               {CHART_TFS.map((t) => (
                 <button key={t.label} type="button" onClick={() => setTf(t)}
-                  className={`h-7 rounded-lg px-2 text-[11px] font-bold transition ${tf.label === t.label ? "bg-emerald-400 text-slate-950" : "bg-black/40 text-slate-500 hover:text-white"}`}>
+                  className={`h-7 rounded-lg px-2 text-[11px] font-bold transition ${tf.label === t.label ? "bg-emerald-400 text-slate-950" : "bg-[var(--hover-bg)] text-[var(--text-muted)] hover:text-[var(--text-primary)]"}`}>
                   {t.label}
                 </button>
               ))}
             </div>
           </div>
           {chartLoading && bars.length === 0 ? (
-            <div className="flex h-[220px] items-center justify-center rounded-2xl bg-black/20">
+            <div className="flex h-[220px] items-center justify-center rounded-2xl bg-[var(--background)]/80">
               <div className="h-6 w-6 animate-spin rounded-full border-2 border-emerald-400 border-t-transparent" />
             </div>
           ) : bars.length === 0 ? (
-            <div className="flex h-[220px] items-center justify-center rounded-2xl bg-black/20 text-sm text-slate-500">
+            <div className="flex h-[220px] items-center justify-center rounded-2xl bg-[var(--background)]/80 text-sm text-[var(--text-muted)]">
               Chart data unavailable for this instrument
             </div>
           ) : (
@@ -321,13 +321,13 @@ export function StockDetailModal({ instrument, balance, onClose }: Props) {
         {/* Trade Ticket */}
         <div className="mt-5 px-5 space-y-3">
           {/* BUY / SELL toggle */}
-          <div className="grid grid-cols-2 gap-2 rounded-2xl bg-black/20 p-1">
+          <div className="grid grid-cols-2 gap-2 rounded-2xl bg-[var(--background)]/80 p-1">
             <button type="button" onClick={() => { setSide("BUY"); setMessage(""); }}
-              className={`h-11 rounded-xl text-sm font-bold transition ${side === "BUY" ? "bg-emerald-400 text-slate-950" : "text-slate-400 hover:text-white"}`}>
+              className={`h-11 rounded-xl text-sm font-bold transition ${side === "BUY" ? "bg-emerald-400 text-slate-950" : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]"}`}>
               BUY
             </button>
             <button type="button" onClick={() => { setSide("SELL"); setMessage(""); }}
-              className={`h-11 rounded-xl text-sm font-bold transition ${side === "SELL" ? "bg-red-400 text-white" : "text-slate-400 hover:text-white"}`}>
+              className={`h-11 rounded-xl text-sm font-bold transition ${side === "SELL" ? "bg-red-400 text-white" : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]"}`}>
               SELL
               {heldQty > 0 && <span className="ml-1 text-[10px] opacity-70">({heldQty})</span>}
             </button>
@@ -336,8 +336,8 @@ export function StockDetailModal({ instrument, balance, onClose }: Props) {
           {/* SELL warning when no holding */}
           {side === "SELL" && !heldLoading && heldQty === 0 && (
             <div className="rounded-2xl border border-red-400/30 bg-red-400/10 px-4 py-3 text-sm">
-              <p className="font-bold text-red-300">No position to sell</p>
-              <p className="mt-0.5 text-xs text-red-400">
+              <p className="font-bold text-[var(--error-label)]">No position to sell</p>
+              <p className="mt-0.5 text-xs text-[var(--red)]">
                 You have 0 shares of {instrument.symbol}. Buy first, then sell to close your position.
               </p>
             </div>
@@ -345,7 +345,7 @@ export function StockDetailModal({ instrument, balance, onClose }: Props) {
 
           {/* SELL qty warning */}
           {side === "SELL" && heldQty > 0 && qty > heldQty && (
-            <div className="rounded-2xl border border-amber-400/30 bg-amber-400/10 px-4 py-2 text-xs font-bold text-amber-300">
+            <div className="rounded-2xl border border-amber-400/30 bg-amber-400/10 px-4 py-2 text-xs font-bold text-[var(--warn-label)]">
               ⚠️ You hold only {heldQty} shares. Reduce qty.
             </div>
           )}
@@ -354,14 +354,14 @@ export function StockDetailModal({ instrument, balance, onClose }: Props) {
           <div className="flex flex-wrap gap-2">
             {(["MARKET", "LIMIT", "SL"] as const).map((t) => (
               <button key={t} type="button" onClick={() => setOrderType(t)}
-                className={`h-8 rounded-xl px-3 text-xs font-bold ${orderType === t ? "bg-white/15 text-white" : "text-slate-500 hover:text-white"}`}>
+                className={`h-8 rounded-xl px-3 text-xs font-bold ${orderType === t ? "bg-[var(--accent-dim)] text-[var(--text-primary)]" : "text-[var(--text-muted)] hover:text-[var(--text-primary)]"}`}>
                 {t}
               </button>
             ))}
             <div className="ml-auto flex gap-1.5">
               {(["MIS", "CNC", "NRML"] as const).map((p) => (
                 <button key={p} type="button" onClick={() => setProductType(p)}
-                  className={`h-8 rounded-xl px-2 text-xs font-bold ${productType === p ? "bg-indigo-500 text-white" : "text-slate-500 hover:text-white"}`}>
+                  className={`h-8 rounded-xl px-2 text-xs font-bold ${productType === p ? "bg-indigo-500 text-white" : "text-[var(--text-muted)] hover:text-[var(--text-primary)]"}`}>
                   {p}
                 </button>
               ))}
@@ -370,87 +370,87 @@ export function StockDetailModal({ instrument, balance, onClose }: Props) {
 
           {/* Qty / Lots + Price */}
           <div className="grid grid-cols-2 gap-3">
-            <label className="rounded-2xl bg-black/25 p-3">
-              <span className="text-xs text-slate-500">{meta.lotSize > 1 ? "Lots" : "Qty"}</span>
+            <label className="rounded-2xl bg-[var(--background)]/80 p-3">
+              <span className="text-xs text-[var(--text-muted)]">{meta.lotSize > 1 ? "Lots" : "Qty"}</span>
               <input
                 type="number"
                 min="1"
                 max={side === "SELL" ? Math.max(1, Math.ceil(heldQty / meta.lotSize)) : undefined}
                 value={lots}
                 onChange={(e) => setLots(e.target.value)}
-                className="mt-1 h-9 w-full bg-transparent text-lg font-bold text-white outline-none"
+                className="mt-1 h-9 w-full bg-transparent text-lg font-bold text-[var(--text-primary)] outline-none"
               />
-              <p className="text-[10px] text-slate-600">
+              <p className="text-[10px] text-[var(--text-muted)]">
                 = {qty} {meta.lotSize > 1 ? "shares" : "qty"}
                 {side === "BUY" && ` · max ${maxBuyLots}`}
                 {side === "SELL" && heldQty > 0 && ` · hold ${heldQty}`}
               </p>
             </label>
             {orderType !== "MARKET" ? (
-              <label className="rounded-2xl bg-black/25 p-3">
-                <span className="text-xs text-slate-500">Price</span>
+              <label className="rounded-2xl bg-[var(--background)]/80 p-3">
+                <span className="text-xs text-[var(--text-muted)]">Price</span>
                 <input
                   type="number"
                   min="0"
                   value={limitPrice}
                   onChange={(e) => setLimitPrice(e.target.value)}
                   placeholder={livePrice.toFixed(2)}
-                  className="mt-1 h-9 w-full bg-transparent text-lg font-bold text-white outline-none placeholder:text-slate-600"
+                  className="mt-1 h-9 w-full bg-transparent text-lg font-bold text-[var(--text-primary)] outline-none placeholder:text-[var(--text-muted)]"
                 />
               </label>
             ) : (
-              <div className="rounded-2xl bg-black/25 p-3">
-                <p className="text-xs text-slate-500">At Market</p>
-                <p className="mt-1 text-lg font-bold text-emerald-300">
+              <div className="rounded-2xl bg-[var(--background)]/80 p-3">
+                <p className="text-xs text-[var(--text-muted)]">At Market</p>
+                <p className="mt-1 text-lg font-bold text-[var(--accent-label)]">
                   ₹{livePrice.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
                 </p>
-                <p className="text-[10px] text-slate-600">Live price</p>
+                <p className="text-[10px] text-[var(--text-muted)]">Live price</p>
               </div>
             )}
           </div>
 
           {/* Target / SL */}
           <div className="grid grid-cols-2 gap-3">
-            <label className="rounded-2xl bg-black/25 p-3">
-              <span className="text-xs text-slate-500">Target (optional)</span>
+            <label className="rounded-2xl bg-[var(--background)]/80 p-3">
+              <span className="text-xs text-[var(--text-muted)]">Target (optional)</span>
               <input type="number" min="0" value={target} onChange={(e) => setTarget(e.target.value)}
-                placeholder="—" className="mt-1 h-8 w-full bg-transparent text-sm font-bold text-white outline-none placeholder:text-slate-600" />
+                placeholder="—" className="mt-1 h-8 w-full bg-transparent text-sm font-bold text-[var(--text-primary)] outline-none placeholder:text-[var(--text-muted)]" />
             </label>
-            <label className="rounded-2xl bg-black/25 p-3">
-              <span className="text-xs text-slate-500">Stop Loss (optional)</span>
+            <label className="rounded-2xl bg-[var(--background)]/80 p-3">
+              <span className="text-xs text-[var(--text-muted)]">Stop Loss (optional)</span>
               <input type="number" min="0" value={stopLoss} onChange={(e) => setStopLoss(e.target.value)}
-                placeholder="—" className="mt-1 h-8 w-full bg-transparent text-sm font-bold text-white outline-none placeholder:text-slate-600" />
+                placeholder="—" className="mt-1 h-8 w-full bg-transparent text-sm font-bold text-[var(--text-primary)] outline-none placeholder:text-[var(--text-muted)]" />
             </label>
           </div>
 
           {/* Summary */}
-          <div className="grid grid-cols-3 gap-2 rounded-2xl bg-black/20 p-3 text-xs">
+          <div className="grid grid-cols-3 gap-2 rounded-2xl bg-[var(--background)]/80 p-3 text-xs">
             <div>
-              <p className="text-slate-500">Qty</p>
-              <p className="font-bold text-white">{qty.toLocaleString("en-IN")}</p>
+              <p className="text-[var(--text-muted)]">Qty</p>
+              <p className="font-bold text-[var(--text-primary)]">{qty.toLocaleString("en-IN")}</p>
             </div>
             <div>
-              <p className="text-slate-500">{side === "BUY" ? "Buy Value" : "Sell Value"}</p>
-              <p className="font-bold text-white">₹{walletImpact.toLocaleString("en-IN")}</p>
+              <p className="text-[var(--text-muted)]">{side === "BUY" ? "Buy Value" : "Sell Value"}</p>
+              <p className="font-bold text-[var(--text-primary)]">₹{walletImpact.toLocaleString("en-IN")}</p>
             </div>
             <div>
-              <p className="text-slate-500">Charges</p>
-              <p className="font-bold text-white">₹{charges.toLocaleString("en-IN")}</p>
+              <p className="text-[var(--text-muted)]">Charges</p>
+              <p className="font-bold text-[var(--text-primary)]">₹{charges.toLocaleString("en-IN")}</p>
             </div>
           </div>
 
           {/* Wallet row */}
-          <div className="flex items-center justify-between rounded-xl bg-black/20 px-3 py-2 text-sm">
-            <span className="text-slate-400">Wallet</span>
-            <span className="font-bold text-white">₹{balance.toLocaleString("en-IN")}</span>
+          <div className="flex items-center justify-between rounded-xl bg-[var(--background)]/80 px-3 py-2 text-sm">
+            <span className="text-[var(--text-secondary)]">Wallet</span>
+            <span className="font-bold text-[var(--text-primary)]">₹{balance.toLocaleString("en-IN")}</span>
             {side === "BUY" && insufficientFunds && (
-              <span className="text-xs font-bold text-red-400">Need ₹{(buyDebit - balance).toLocaleString("en-IN")} more</span>
+              <span className="text-xs font-bold text-[var(--red)]">Need ₹{(buyDebit - balance).toLocaleString("en-IN")} more</span>
             )}
           </div>
 
           {/* Message */}
           {message && (
-            <p className={`rounded-xl px-3 py-2 text-sm font-semibold ${message.startsWith("✅") ? "bg-emerald-400/10 text-emerald-300" : "bg-red-400/10 text-red-300"}`}>
+            <p className={`rounded-xl px-3 py-2 text-sm font-semibold ${message.startsWith("✅") ? "bg-emerald-400/10 text-[var(--accent-label)]" : "bg-red-400/10 text-[var(--error-label)]"}`}>
               {message}
             </p>
           )}

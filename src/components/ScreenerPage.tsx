@@ -7,7 +7,7 @@ import { useLiveQuotes } from "@/lib/useLiveQuotes";
 import { YAHOO_SYMBOL_MAP } from "@/lib/symbolMap";
 
 const equities = watchlists.stocks;
-const sectors = ["All", "IT", "Banking", "Pharma", "Auto", "Oil & Gas", "Infra"];
+const sectors = ["All", ...new Set(equities.map((i) => i.sector).filter(Boolean) as string[])];
 
 const PREBUILT = [
   { label: "Momentum",    description: "High % gainers today",   filter: (i: { change: number }) => i.change > 1 },
@@ -61,8 +61,8 @@ export function ScreenerPage({ onSelectSymbol }: { onSelectSymbol?: (s: string) 
 
   return (
     <div className="space-y-5">
-      <div className="rounded-[1.5rem] border border-white/10 bg-white/[0.04] p-5">
-        <p className="mb-4 flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-emerald-300">
+      <div className="rounded-[1.5rem] border border-[var(--card-border)] bg-[var(--card-bg)] p-5">
+        <p className="mb-4 flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-[var(--accent-label)]">
           <FiFilter /> Stock Screener
         </p>
 
@@ -70,7 +70,7 @@ export function ScreenerPage({ onSelectSymbol }: { onSelectSymbol?: (s: string) 
         <div className="mb-4 flex flex-wrap gap-2">
           {PREBUILT.map((p) => (
             <button key={p.label} type="button" onClick={() => setPrebuilt(prebuilt === p.label ? null : p.label)}
-              className={`h-9 rounded-xl px-3 text-xs font-bold ${prebuilt === p.label ? "bg-emerald-400 text-slate-950" : "bg-black/30 text-slate-400"}`}>
+              className={`h-9 rounded-xl px-3 text-xs font-bold ${prebuilt === p.label ? "bg-emerald-400 text-slate-950" : "bg-[var(--background)]/80 text-[var(--text-secondary)]"}`}>
               {p.label}
             </button>
           ))}
@@ -80,7 +80,7 @@ export function ScreenerPage({ onSelectSymbol }: { onSelectSymbol?: (s: string) 
         <div className="mb-4 flex flex-wrap gap-2">
           {sectors.map((s) => (
             <button key={s} type="button" onClick={() => setSector(s)}
-              className={`h-8 rounded-xl px-3 text-xs font-bold ${sector === s ? "bg-indigo-500 text-white" : "bg-black/30 text-slate-500"}`}>
+              className={`h-8 rounded-xl px-3 text-xs font-bold ${sector === s ? "bg-indigo-500 text-white" : "bg-[var(--background)]/80 text-[var(--text-muted)]"}`}>
               {s}
             </button>
           ))}
@@ -88,31 +88,31 @@ export function ScreenerPage({ onSelectSymbol }: { onSelectSymbol?: (s: string) 
 
         {/* Range filters */}
         <div className="grid grid-cols-2 gap-3 mb-4 sm:grid-cols-4">
-          <label className="rounded-xl bg-black/25 p-3">
-            <span className="text-xs text-slate-500">Min PE</span>
+          <label className="rounded-xl bg-[var(--background)]/80 p-3">
+            <span className="text-xs text-[var(--text-muted)]">Min PE</span>
             <input type="number" value={minPE} onChange={(e) => setMinPE(e.target.value)}
-              placeholder="0" className="mt-1 h-8 w-full bg-transparent text-sm font-bold text-white outline-none placeholder:text-slate-600" />
+              placeholder="0" className="mt-1 h-8 w-full bg-transparent text-sm font-bold text-[var(--text-primary)] outline-none placeholder:text-[var(--text-muted)]" />
           </label>
-          <label className="rounded-xl bg-black/25 p-3">
-            <span className="text-xs text-slate-500">Max PE</span>
+          <label className="rounded-xl bg-[var(--background)]/80 p-3">
+            <span className="text-xs text-[var(--text-muted)]">Max PE</span>
             <input type="number" value={maxPE} onChange={(e) => setMaxPE(e.target.value)}
-              placeholder="100" className="mt-1 h-8 w-full bg-transparent text-sm font-bold text-white outline-none placeholder:text-slate-600" />
+              placeholder="100" className="mt-1 h-8 w-full bg-transparent text-sm font-bold text-[var(--text-primary)] outline-none placeholder:text-[var(--text-muted)]" />
           </label>
-          <label className="rounded-xl bg-black/25 p-3">
-            <span className="text-xs text-slate-500">Min Price ₹</span>
+          <label className="rounded-xl bg-[var(--background)]/80 p-3">
+            <span className="text-xs text-[var(--text-muted)]">Min Price ₹</span>
             <input type="number" value={minPrice} onChange={(e) => setMinPrice(e.target.value)}
-              className="mt-1 h-8 w-full bg-transparent text-sm font-bold text-white outline-none placeholder:text-slate-600" />
+              className="mt-1 h-8 w-full bg-transparent text-sm font-bold text-[var(--text-primary)] outline-none placeholder:text-[var(--text-muted)]" />
           </label>
-          <label className="rounded-xl bg-black/25 p-3">
-            <span className="text-xs text-slate-500">Max Price ₹</span>
+          <label className="rounded-xl bg-[var(--background)]/80 p-3">
+            <span className="text-xs text-[var(--text-muted)]">Max Price ₹</span>
             <input type="number" value={maxPrice} onChange={(e) => setMaxPrice(e.target.value)}
-              className="mt-1 h-8 w-full bg-transparent text-sm font-bold text-white outline-none placeholder:text-slate-600" />
+              className="mt-1 h-8 w-full bg-transparent text-sm font-bold text-[var(--text-primary)] outline-none placeholder:text-[var(--text-muted)]" />
           </label>
         </div>
 
         <div className="flex items-center justify-between mb-3">
-          <p className="text-sm text-slate-400">{filtered.length} stocks found</p>
-          <button type="button" onClick={saveScreen} className="flex items-center gap-1 rounded-xl bg-amber-400/10 px-3 py-2 text-xs font-bold text-amber-300">
+          <p className="text-sm text-[var(--text-secondary)]">{filtered.length} stocks found</p>
+          <button type="button" onClick={saveScreen} className="flex items-center gap-1 rounded-xl bg-amber-400/10 px-3 py-2 text-xs font-bold text-[var(--warn-label)]">
             <FiStar size={12} /> Save Screen
           </button>
         </div>
@@ -121,7 +121,7 @@ export function ScreenerPage({ onSelectSymbol }: { onSelectSymbol?: (s: string) 
         {quotes[equities[0]?.symbol]?.isLoading && filtered.length === 0 && (
           <div className="space-y-2">
             {[...Array(5)].map((_, i) => (
-              <div key={i} className="h-14 animate-pulse rounded-xl bg-white/5" />
+              <div key={i} className="h-14 animate-pulse rounded-xl bg-[var(--hover-bg)]" />
             ))}
           </div>
         )}
@@ -130,14 +130,14 @@ export function ScreenerPage({ onSelectSymbol }: { onSelectSymbol?: (s: string) 
             const isUp = stock.change >= 0;
             return (
               <button key={stock.symbol} type="button" onClick={() => onSelectSymbol?.(stock.symbol)}
-                className="flex w-full items-center justify-between rounded-xl bg-black/20 px-4 py-3 text-left hover:bg-white/5">
+                className="flex w-full items-center justify-between rounded-xl bg-[var(--background)]/80 px-4 py-3 text-left hover:bg-[var(--hover-bg)]">
                 <div>
-                  <p className="text-sm font-bold text-white">{stock.symbol}</p>
-                  <p className="text-xs text-slate-500">PE: {stock.pe?.toFixed(1) ?? "—"} · {stock.sector ?? "—"}</p>
+                  <p className="text-sm font-bold text-[var(--text-primary)]">{stock.symbol}</p>
+                  <p className="text-xs text-[var(--text-muted)]">PE: {stock.pe?.toFixed(1) ?? "—"} · {stock.sector ?? "—"}</p>
                 </div>
                 <div className="text-right">
-                  <p className="text-sm font-bold text-white">₹{stock.price.toLocaleString("en-IN")}</p>
-                  <p className={`text-xs font-bold ${isUp ? "text-emerald-300" : "text-red-300"}`}>
+                  <p className="text-sm font-bold text-[var(--text-primary)]">₹{stock.price.toLocaleString("en-IN")}</p>
+                  <p className={`text-xs font-bold ${isUp ? "text-[var(--accent-label)]" : "text-[var(--error-label)]"}`}>
                     {isUp ? "+" : ""}{stock.change.toFixed(2)}%
                   </p>
                 </div>
@@ -149,11 +149,11 @@ export function ScreenerPage({ onSelectSymbol }: { onSelectSymbol?: (s: string) 
 
       {/* Saved screens */}
       {saved.length > 0 && (
-        <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4">
-          <p className="mb-2 text-sm font-bold text-white">Saved Screens</p>
+        <div className="rounded-2xl border border-[var(--card-border)] bg-[var(--card-bg)] p-4">
+          <p className="mb-2 text-sm font-bold text-[var(--text-primary)]">Saved Screens</p>
           <div className="flex flex-wrap gap-2">
             {saved.map((s) => (
-              <span key={s} className="rounded-full bg-indigo-500/20 px-3 py-1 text-xs text-indigo-300">{s}</span>
+              <span key={s} className="rounded-full bg-indigo-500/20 px-3 py-1 text-xs text-[var(--info-label)]">{s}</span>
             ))}
           </div>
         </div>

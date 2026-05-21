@@ -88,14 +88,14 @@ export function BrokerageCalculator() {
 
   return (
     <div className="space-y-5">
-      <div className="rounded-[1.5rem] border border-white/10 bg-white/[0.04] p-5">
-        <p className="mb-4 text-xs font-semibold uppercase tracking-widest text-emerald-300">Brokerage Calculator</p>
+      <div className="rounded-[1.5rem] border border-[var(--card-border)] bg-[var(--card-bg)] p-5">
+        <p className="mb-4 text-xs font-semibold uppercase tracking-widest text-[var(--accent-label)]">Brokerage Calculator</p>
 
         {/* Segment */}
         <div className="mb-4 flex flex-wrap gap-2">
           {(Object.keys(SEGMENT_LABELS) as Segment[]).map((s) => (
             <button key={s} type="button" onClick={() => setSegment(s)}
-              className={`h-8 rounded-xl px-3 text-xs font-bold ${segment === s ? "bg-emerald-400 text-slate-950" : "bg-black/30 text-slate-400"}`}>
+              className={`h-8 rounded-xl px-3 text-xs font-bold ${segment === s ? "bg-emerald-400 text-slate-950" : "bg-[var(--background)]/80 text-[var(--text-secondary)]"}`}>
               {SEGMENT_LABELS[s]}
             </button>
           ))}
@@ -104,34 +104,34 @@ export function BrokerageCalculator() {
         {/* Inputs */}
         <div className="grid grid-cols-2 gap-3 mb-4">
           {isOptions ? (
-            <label className="rounded-xl bg-black/25 p-3 col-span-2">
-              <span className="text-xs text-slate-500">Option Premium (₹)</span>
+            <label className="rounded-xl bg-[var(--background)]/80 p-3 col-span-2">
+              <span className="text-xs text-[var(--text-muted)]">Option Premium (₹)</span>
               <input type="number" value={premium} onChange={(e) => setPremium(e.target.value)}
-                className="mt-1 h-9 w-full bg-transparent text-lg font-bold text-white outline-none" />
+                className="mt-1 h-9 w-full bg-transparent text-lg font-bold text-[var(--text-primary)] outline-none" />
             </label>
           ) : (
             <>
-              <label className="rounded-xl bg-black/25 p-3">
-                <span className="text-xs text-slate-500">Buy Price (₹)</span>
+              <label className="rounded-xl bg-[var(--background)]/80 p-3">
+                <span className="text-xs text-[var(--text-muted)]">Buy Price (₹)</span>
                 <input type="number" value={buyPrice} onChange={(e) => setBuyPrice(e.target.value)}
-                  className="mt-1 h-9 w-full bg-transparent text-lg font-bold text-white outline-none" />
+                  className="mt-1 h-9 w-full bg-transparent text-lg font-bold text-[var(--text-primary)] outline-none" />
               </label>
-              <label className="rounded-xl bg-black/25 p-3">
-                <span className="text-xs text-slate-500">Sell Price (₹)</span>
+              <label className="rounded-xl bg-[var(--background)]/80 p-3">
+                <span className="text-xs text-[var(--text-muted)]">Sell Price (₹)</span>
                 <input type="number" value={sellPrice} onChange={(e) => setSellPrice(e.target.value)}
-                  className="mt-1 h-9 w-full bg-transparent text-lg font-bold text-white outline-none" />
+                  className="mt-1 h-9 w-full bg-transparent text-lg font-bold text-[var(--text-primary)] outline-none" />
               </label>
             </>
           )}
-          <label className="rounded-xl bg-black/25 p-3">
-            <span className="text-xs text-slate-500">Quantity</span>
+          <label className="rounded-xl bg-[var(--background)]/80 p-3">
+            <span className="text-xs text-[var(--text-muted)]">Quantity</span>
             <input type="number" value={qty} onChange={(e) => setQty(e.target.value)}
-              className="mt-1 h-9 w-full bg-transparent text-lg font-bold text-white outline-none" />
+              className="mt-1 h-9 w-full bg-transparent text-lg font-bold text-[var(--text-primary)] outline-none" />
           </label>
         </div>
 
         {/* Breakdown */}
-        <div className="space-y-2 rounded-2xl border border-white/10 p-4">
+        <div className="space-y-2 rounded-2xl border border-[var(--card-border)] p-4">
           {[
             { label: "Brokerage", value: result.brokerage },
             { label: "STT / CTT", value: result.stt },
@@ -142,38 +142,38 @@ export function BrokerageCalculator() {
             { label: "GST (18%)", value: result.gst },
           ].map(({ label, value }) => (
             <div key={label} className="flex justify-between text-sm">
-              <span className="text-slate-400">{label}</span>
-              <span className="text-white">₹{value.toFixed(2)}</span>
+              <span className="text-[var(--text-secondary)]">{label}</span>
+              <span className="text-[var(--text-primary)]">₹{value.toFixed(2)}</span>
             </div>
           ))}
-          <div className="flex justify-between border-t border-white/10 pt-2 text-sm font-bold">
-            <span className="text-white">Total Charges</span>
-            <span className="text-red-300">₹{result.total.toFixed(2)}</span>
+          <div className="flex justify-between border-t border-[var(--card-border)] pt-2 text-sm font-bold">
+            <span className="text-[var(--text-primary)]">Total Charges</span>
+            <span className="text-[var(--error-label)]">₹{result.total.toFixed(2)}</span>
           </div>
         </div>
 
         {/* P&L */}
         {!isOptions && (
           <div className="mt-4 grid grid-cols-3 gap-3">
-            <div className="rounded-xl bg-black/25 p-3 text-center">
-              <p className="text-xs text-slate-500">Gross P&L</p>
-              <p className={`font-bold ${result.grossPnl >= 0 ? "text-emerald-300" : "text-red-300"}`}>
+            <div className="rounded-xl bg-[var(--background)]/80 p-3 text-center">
+              <p className="text-xs text-[var(--text-muted)]">Gross P&L</p>
+              <p className={`font-bold ${result.grossPnl >= 0 ? "text-[var(--accent-label)]" : "text-[var(--error-label)]"}`}>
                 {result.grossPnl >= 0 ? "+" : ""}₹{result.grossPnl.toFixed(2)}
               </p>
             </div>
             <div className={`rounded-xl p-3 text-center ${result.netPnl >= 0 ? "bg-emerald-400/10" : "bg-red-400/10"}`}>
-              <p className="text-xs text-slate-500">Net P&L</p>
-              <p className={`font-bold ${result.netPnl >= 0 ? "text-emerald-300" : "text-red-300"}`}>
+              <p className="text-xs text-[var(--text-muted)]">Net P&L</p>
+              <p className={`font-bold ${result.netPnl >= 0 ? "text-[var(--accent-label)]" : "text-[var(--error-label)]"}`}>
                 {result.netPnl >= 0 ? "+" : ""}₹{result.netPnl.toFixed(2)}
               </p>
             </div>
-            <div className="rounded-xl bg-black/25 p-3 text-center">
-              <p className="text-xs text-slate-500">Breakeven</p>
-              <p className="font-bold text-amber-300">₹{result.breakeven.toFixed(2)}</p>
+            <div className="rounded-xl bg-[var(--background)]/80 p-3 text-center">
+              <p className="text-xs text-[var(--text-muted)]">Breakeven</p>
+              <p className="font-bold text-[var(--warn-label)]">₹{result.breakeven.toFixed(2)}</p>
             </div>
           </div>
         )}
-        <p className="mt-3 text-[10px] text-slate-600">* Based on Zerodha rates. Actual charges may vary by broker.</p>
+        <p className="mt-3 text-[10px] text-[var(--text-muted)]">* Based on Zerodha rates. Actual charges may vary by broker.</p>
       </div>
     </div>
   );

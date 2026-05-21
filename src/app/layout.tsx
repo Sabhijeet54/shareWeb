@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import { ThemeWrapper } from "@/components/ThemeWrapper";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -13,8 +14,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "TradeLite Dashboard",
-  description: "Mobile-first trading dashboard with Firebase wallet funding",
+  title: "ShareWeb – Indian Market Trading",
+  description: "Professional NSE/BSE trading platform with live market data",
 };
 
 export default function RootLayout({
@@ -25,9 +26,12 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${geistSans.variable} ${geistMono.variable} dark h-full antialiased`}
+      data-theme="dark"
     >
-      <body className="flex min-h-full flex-col bg-[#070b10]">{children}</body>
+      <body className="flex min-h-full flex-col bg-[var(--background)] text-[var(--foreground)]">
+        <ThemeWrapper>{children}</ThemeWrapper>
+      </body>
     </html>
   );
 }

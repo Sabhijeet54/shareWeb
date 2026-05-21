@@ -7,6 +7,7 @@
 
 import { useMemo } from "react";
 import type { LiveQuote } from "./useLiveQuotes";
+import { allInstruments, getDerivativeSpotSymbol } from "@/lib/marketData";
 
 const R = 0.065; // RBI repo rate
 const DEFAULT_IV = 0.15; // 15% default IV
@@ -64,12 +65,17 @@ export function useDerivativeQuotes(
     const result: Record<string, Pick<LiveQuote, "price" | "change" | "changePct" | "isLoading" | "isError">> = {};
     const T = daysToNextExpiry() / 365;
 
+    const derivativeSymbols = allInstruments
+      .map((instrument) => instrument.symbol)
+      .filter((symbol) => getDerivativeSpotSymbol(symbol) !== null);
+
     const derive = (spotSymbol: string) => {
       const q = spotQuotes[spotSymbol];
       if (!q || q.isLoading || q.price <= 0) return null;
       return q;
     };
 
+<<<<<<< Updated upstream
     // ── Futures: F = S * e^(r * T) ──────────────────────────────────────────
     const futureMap: Array<[string, string]> = [
       ["NIFTY FUT", "NIFTY"],
@@ -85,17 +91,18 @@ export function useDerivativeQuotes(
 
     for (const [futSym, spotSym] of futureMap) {
       const q = derive(spotSym);
+=======
+    for (const derivativeSymbol of derivativeSymbols) {
+      const spotSymbol = getDerivativeSpotSymbol(derivativeSymbol);
+      if (!spotSymbol) continue;
+      const q = derive(spotSymbol);
+>>>>>>> Stashed changes
       if (!q) {
-        result[futSym] = { price: 0, change: 0, changePct: 0, isLoading: true, isError: false };
+        result[derivativeSymbol] = { price: 0, change: 0, changePct: 0, isLoading: true, isError: false };
         continue;
       }
-      const futPrice = q.price * Math.exp(R * T);
-      const prevFut = (q.prevClose > 0 ? q.prevClose : q.price) * Math.exp(R * T);
-      const futChange = futPrice - prevFut;
-      const futChangePct = prevFut > 0 ? (futChange / prevFut) * 100 : q.changePct;
-      result[futSym] = { price: futPrice, change: futChange, changePct: futChangePct, isLoading: false, isError: false };
-    }
 
+<<<<<<< Updated upstream
     // ── ATM Options using Black-Scholes ────────────────────────────────────
     type OptDef = [string, string, "CE" | "PE"];
     const optionMap: OptDef[] = [
@@ -116,22 +123,29 @@ export function useDerivativeQuotes(
       const q = derive(spotSym);
       if (!q) {
         result[optSym] = { price: 0, change: 0, changePct: 0, isLoading: true, isError: false };
+=======
+      if (derivativeSymbol.endsWith(" FUT")) {
+        const futPrice = q.price * Math.exp(R * T);
+        const prevFut = (q.prevClose > 0 ? q.prevClose : q.price) * Math.exp(R * T);
+        const futChange = futPrice - prevFut;
+        const futChangePct = prevFut > 0 ? (futChange / prevFut) * 100 : q.changePct;
+        result[derivativeSymbol] = { price: futPrice, change: futChange, changePct: futChangePct, isLoading: false, isError: false };
+>>>>>>> Stashed changes
         continue;
       }
+
+      const type = derivativeSymbol.includes(" CE ") ? "CE" : "PE";
       const S = q.price;
-      // ATM strike: round to nearest 50 for indices, 100 for stocks
       const step = S > 5000 ? 100 : S > 1000 ? 50 : 10;
       const K = Math.round(S / step) * step;
       const sigma = DEFAULT_IV;
-
       const price = type === "CE" ? bsCall(S, K, T, sigma) : bsPut(S, K, T, sigma);
-      // Previous price derived from previous close
       const prevS = q.prevClose > 0 ? q.prevClose : S;
       const prevPrice = type === "CE" ? bsCall(prevS, K, T + 1 / 365, sigma) : bsPut(prevS, K, T + 1 / 365, sigma);
       const change = price - prevPrice;
       const changePct = prevPrice > 0 ? (change / prevPrice) * 100 : 0;
 
-      result[optSym] = { price, change, changePct, isLoading: false, isError: false };
+      result[derivativeSymbol] = { price, change, changePct, isLoading: false, isError: false };
     }
 
     return result;
