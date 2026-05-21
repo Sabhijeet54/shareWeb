@@ -1,12 +1,6 @@
 // ─── Multi-provider Search API ────────────────────────────────────────────
 // Primary: Yahoo Finance search (no auth needed, supports Indian stocks)
 // GET /api/search?q=reliance
-<<<<<<< Updated upstream
-// Proxies Yahoo Finance search autocomplete — free, no API key
-
-import { NextRequest, NextResponse } from "next/server";
-
-=======
 // Response: { quotes: [{ symbol, shortname, longname, exchange, exchDisp }] }
 
 import { NextRequest, NextResponse } from "next/server";
@@ -41,44 +35,12 @@ async function searchFinnhub(query: string) {
   }));
 }
 
->>>>>>> Stashed changes
 export async function GET(req: NextRequest) {
   const query = req.nextUrl.searchParams.get("q") ?? "";
   if (!query) {
     return NextResponse.json({ quotes: [] });
   }
 
-<<<<<<< Updated upstream
-  try {
-    const url = `https://query1.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(q)}&quotesCount=8&newsCount=0&listsCount=0&enableFuzzyQuery=true&region=IN&lang=en-IN`;
-
-    const res = await fetch(url, {
-      headers: {
-        "User-Agent":
-          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/121 Safari/537.36",
-        Accept: "application/json",
-      },
-      next: { revalidate: 0 },
-    });
-
-    if (!res.ok) {
-      return NextResponse.json({ quotes: [] });
-    }
-
-    const data = await res.json();
-    return NextResponse.json({
-      quotes: (data?.quotes ?? []).filter(
-        (q: { quoteType?: string }) =>
-          q.quoteType === "EQUITY" ||
-          q.quoteType === "INDEX" ||
-          q.quoteType === "CURRENCY" ||
-          q.quoteType === "CRYPTOCURRENCY" ||
-          q.quoteType === "FUTURE",
-      ),
-    });
-  } catch {
-    return NextResponse.json({ quotes: [] });
-=======
   // Try Yahoo first
   const yahoo = await searchYahoo(query);
   if (yahoo?.length) {
@@ -136,7 +98,6 @@ export async function GET(req: NextRequest) {
       { quotes: finnhub },
       { headers: { "Cache-Control": "public, s-maxage=60, stale-while-revalidate=120" } }
     );
->>>>>>> Stashed changes
   }
 
   return NextResponse.json({ quotes: [] });

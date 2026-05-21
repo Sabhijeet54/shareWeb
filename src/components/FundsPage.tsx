@@ -34,17 +34,6 @@ export function FundsPage({ balance }: { balance: number }) {
   const [withdrawLoading, setWithdrawLoading] = useState(false);
 
   // Margin calc
-<<<<<<< Updated upstream
-  const [marginSymbol, setMarginSymbol] = useState("NIFTY");
-  const [marginLots, setMarginLots] = useState("1");
-  const MARGIN_RATES: Record<string, { lotSize: number; span: number; exposure: number }> = {
-    NIFTY: { lotSize: 75, span: 42000, exposure: 21000 },
-    BANKNIFTY: { lotSize: 30, span: 34000, exposure: 17000 },
-    RELIANCE: { lotSize: 250, span: 28000, exposure: 14000 },
-    SBIN: { lotSize: 1500, span: 8000, exposure: 4000 },
-  };
-  const marginInfo = MARGIN_RATES[marginSymbol] ?? MARGIN_RATES.NIFTY;
-=======
   const [marginSymbol, setMarginSymbol] = useState(equitySymbols[0] ?? "");
   const [marginLots, setMarginLots] = useState("1");
   const marginQuotes = useLiveQuotes(equitySymbols, 15000);
@@ -70,7 +59,6 @@ export function FundsPage({ balance }: { balance: number }) {
       isLive: referencePrice > 0,
     };
   }, [marginQuotes, marginSymbol]);
->>>>>>> Stashed changes
   const totalMargin = (marginInfo.span + marginInfo.exposure) * Number(marginLots || 1);
 
   // Ledger

@@ -10,8 +10,8 @@ export function WalletCard({ balance }: { balance: number }) {
           <p className="text-sm font-medium text-emerald-100/80">
             Wallet balance
           </p>
-          <p className="mt-2 text-3xl font-bold tracking-tight text-white">
-            Rs. {balance.toLocaleString("en-IN")}
+          <p className="mt-2 text-2xl font-bold tracking-tight text-white truncate">
+            ₹{balance.toLocaleString("en-IN", { maximumFractionDigits: 0 })}
           </p>
         </div>
         <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white/10 text-emerald-200">

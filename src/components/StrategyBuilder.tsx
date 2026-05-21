@@ -44,15 +44,6 @@ const STRATEGIES = {
   ]),
 };
 
-<<<<<<< Updated upstream
-const UNDERLYINGS = [
-  { symbol: "NIFTY", lotSize: 75, fallback: 22480 },
-  { symbol: "BANKNIFTY", lotSize: 30, fallback: 48260 },
-  { symbol: "FINNIFTY", lotSize: 60, fallback: 21440 },
-];
-
-=======
->>>>>>> Stashed changes
 function calcPayoff(legs: Leg[], spotAtExpiry: number): number {
   return legs.reduce((sum, leg) => {
     const intrinsic = leg.type === "CE"
@@ -68,7 +59,7 @@ export function StrategyBuilder() {
   const [selectedStrategy, setSelectedStrategy] = useState<keyof typeof STRATEGIES>("Long Straddle");
   const [legs, setLegs] = useState<Leg[]>([]);
 
-  const quote = useLiveSingleQuote(underlyingSymbol, 15000);
+  const quote = useLiveSingleQuote(underlyingSymbol, 1500);
   const spot = quote && !quote.isLoading && quote.price > 0 ? quote.price : 0;
   const lotSize = getContractMeta({
     symbol: `${underlyingSymbol} FUT`,

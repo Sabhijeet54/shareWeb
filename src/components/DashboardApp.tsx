@@ -8,7 +8,6 @@ import {
 } from "react-icons/fi";
 import { useAuth } from "@/context/AuthContext";
 import { useTheme } from "@/context/ThemeContext";
-import { AdminPanel } from "@/components/AdminPanel";
 import { BottomNav, type TabKey } from "@/components/BottomNav";
 import { BrokerageCalculator } from "@/components/BrokerageCalculator";
 import { ChartPanel } from "@/components/ChartPanel";
@@ -81,11 +80,7 @@ function MoreDrawer({ onChange, onClose }: { onChange: (t: TabKey) => void; onCl
 }
 
 export function DashboardApp() {
-  const { profile, logout, isAdmin } = useAuth();
-<<<<<<< Updated upstream
-  const [activeTab, setActiveTab] = useState<TabKey>("home");
-  const [chartSymbol, setChartSymbol] = useState("RELIANCE");
-=======
+  const { profile, logout } = useAuth();
   const { theme, toggleTheme } = useTheme();
 
   // Persist active tab + chart symbol in sessionStorage so refresh stays on same screen
@@ -104,7 +99,6 @@ export function DashboardApp() {
     return "RELIANCE";
   });
   const [prevTab, setPrevTab] = useState<TabKey | null>(null);
->>>>>>> Stashed changes
   const [showMore, setShowMore] = useState(false);
   const balance = profile?.walletBalance ?? 0;
 
@@ -182,7 +176,7 @@ export function DashboardApp() {
           {/* Sidebar */}
           <aside className="space-y-4">
             <WalletCard balance={balance} />
-            {/* {isAdmin && <AdminPanel />} */}
+
 
             {/* Desktop nav */}
             <nav className="hidden rounded-[1.5rem] border border-[var(--card-border)] bg-[var(--card-bg)] p-3 md:block">

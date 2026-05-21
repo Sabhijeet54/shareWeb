@@ -95,13 +95,8 @@ export function PositionsPage() {
   const { open, closed } = usePositions(user?.uid ?? "");
   const squareOffAlert = useSquareOffAlert();
 
-<<<<<<< Updated upstream
   const openSymbols = open.map((p) => p.symbol).filter((s) => s in YAHOO_SYMBOL_MAP);
-  const quotes = useLiveQuotes(openSymbols, 10000);
-=======
-  const openSymbols = open.map((p) => p.symbol).filter((s) => s in FINNHUB_SYMBOL_MAP);
-  const quotes = useLiveQuotes(openSymbols, 2500);
->>>>>>> Stashed changes
+  const quotes = useLiveQuotes(openSymbols, 1500);
 
   const totalPnl = open.reduce((acc, pos) => {
     const cmp = quotes[pos.symbol]?.price ?? pos.avgPrice;

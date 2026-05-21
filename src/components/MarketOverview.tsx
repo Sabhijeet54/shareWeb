@@ -9,7 +9,7 @@ import { watchlists, watchTabs, getContractMeta, getDerivativeSpotSymbol } from 
 import type { WatchlistKey } from "@/lib/marketData";
 import { useLiveQuotes } from "@/lib/useLiveQuotes";
 import { useDerivativeQuotes } from "@/lib/useDerivativeQuotes";
-import { YAHOO_SYMBOL_MAP } from "@/lib/symbolMap";
+import { YAHOO_SYMBOL_MAP, getCurrencySign } from "@/lib/symbolMap";
 import { StockDetailModal } from "@/components/StockDetailModal";
 import type { Instrument } from "@/types/app";
 
@@ -17,12 +17,6 @@ import type { Instrument } from "@/types/app";
 const DIRECT_SYMBOLS = Object.keys(YAHOO_SYMBOL_MAP);
 const allInstruments: Instrument[] = Object.values(watchlists).flat();
 
-<<<<<<< Updated upstream
-// Symbols needed to derive F&O prices
-const SPOT_SYMBOLS_FOR_FO = ["NIFTY", "BANKNIFTY", "FINNIFTY", "MIDCPNIFTY", "RELIANCE", "TCS", "HDFCBANK", "SBIN", "INFY"];
-
-=======
->>>>>>> Stashed changes
 type SortKey = "default" | "price_asc" | "price_desc" | "change_asc" | "change_desc";
 
 function useCombinedQuotes(tabSymbols: string[]) {
@@ -128,7 +122,7 @@ export function MarketOverview({ balance }: { balance: number }) {
     alertsSet.forEach((a) => {
       const q = quotes[a.symbol];
       if (q && q.price > 0 && q.price >= a.price) {
-        window.alert(`🔔 Alert: ${a.symbol} crossed ₹${a.price}! Current: ₹${q.price.toFixed(2)}`);
+        window.alert(`🔔 Alert: ${a.symbol} crossed ${getCurrencySign(a.symbol)}${a.price}! Current: ${getCurrencySign(a.symbol)}${q.price.toFixed(2)}`);
         setAlertsSet((prev) => prev.filter((x) => x.symbol !== a.symbol));
       }
     });
@@ -261,7 +255,7 @@ export function MarketOverview({ balance }: { balance: number }) {
                 ) : (
                   <div className="mt-2 flex items-baseline gap-2">
                     <p className="text-sm font-bold text-[var(--text-primary)]">
-                      ₹{price.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      {getCurrencySign(item.symbol)}{price.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </p>
                     <span className={`text-xs font-bold ${isUp ? "text-[var(--green)]" : "text-[var(--red)]"}`}>
                       {isUp ? "+" : ""}{changePct.toFixed(2)}%
@@ -303,7 +297,7 @@ export function MarketOverview({ balance }: { balance: number }) {
             {alertsSet.map((a, i) => (
               <div key={i} className="flex items-center justify-between rounded-xl bg-[var(--background)]/80 px-3 py-2">
                 <span className="text-sm text-[var(--text-primary)]">{a.symbol}</span>
-                <span className="text-sm text-[var(--warn-label)]">≥ ₹{a.price.toLocaleString("en-IN")}</span>
+                <span className="text-sm text-[var(--warn-label)]">≥ {getCurrencySign(a.symbol)}{a.price.toLocaleString("en-IN")}</span>
                 <button type="button" onClick={() => setAlertsSet((prev) => prev.filter((_, j) => j !== i))}
                   className="text-[var(--text-muted)] hover:text-[var(--red)]"><FiX size={14} /></button>
               </div>
@@ -334,17 +328,19 @@ function MarketDataPanel({ instrument, quote }: { instrument: Instrument; quote:
   const spread = Math.max(0.05, price * 0.0008);
   const meta = getContractMeta(instrument);
 
+  const cs = getCurrencySign(instrument.symbol);
+
   const stats = [
-    { label: "Bid",       value: price > 0 ? `₹${(price - spread).toLocaleString("en-IN", { maximumFractionDigits: 2 })}` : "—" },
-    { label: "Ask",       value: price > 0 ? `₹${(price + spread).toLocaleString("en-IN", { maximumFractionDigits: 2 })}` : "—" },
-    { label: "Day High",  value: high > 0  ? `₹${high.toLocaleString("en-IN", { maximumFractionDigits: 2 })}` : "—" },
-    { label: "Day Low",   value: low > 0   ? `₹${low.toLocaleString("en-IN", { maximumFractionDigits: 2 })}` : "—" },
-    { label: "Open",      value: (quote?.open ?? 0) > 0 ? `₹${quote!.open.toLocaleString("en-IN")}` : "—" },
-    { label: "Prev Close",value: (quote?.prevClose ?? 0) > 0 ? `₹${quote!.prevClose.toLocaleString("en-IN")}` : "—" },
+    { label: "Bid",       value: price > 0 ? `${cs}${(price - spread).toLocaleString("en-IN", { maximumFractionDigits: 2 })}` : "—" },
+    { label: "Ask",       value: price > 0 ? `${cs}${(price + spread).toLocaleString("en-IN", { maximumFractionDigits: 2 })}` : "—" },
+    { label: "Day High",  value: high > 0  ? `${cs}${high.toLocaleString("en-IN", { maximumFractionDigits: 2 })}` : "—" },
+    { label: "Day Low",   value: low > 0   ? `${cs}${low.toLocaleString("en-IN", { maximumFractionDigits: 2 })}` : "—" },
+    { label: "Open",      value: (quote?.open ?? 0) > 0 ? `${cs}${quote!.open.toLocaleString("en-IN")}` : "—" },
+    { label: "Prev Close",value: (quote?.prevClose ?? 0) > 0 ? `${cs}${quote!.prevClose.toLocaleString("en-IN")}` : "—" },
     { label: "Volume",    value: (quote?.volume ?? 0) > 0 ? ((quote!.volume > 1e7 ? (quote!.volume / 1e7).toFixed(1) + " Cr" : (quote!.volume / 1e5).toFixed(1) + " L")) : "—" },
-    { label: "52W High",  value: (quote?.weekHigh52 ?? 0) > 0 ? `₹${quote!.weekHigh52.toLocaleString("en-IN")}` : "—" },
-    { label: "52W Low",   value: (quote?.weekLow52 ?? 0) > 0  ? `₹${quote!.weekLow52.toLocaleString("en-IN")}`  : "—" },
-    { label: "Mkt Cap",   value: quote?.marketCap ? `₹${(quote.marketCap / 1e12).toFixed(2)}T` : "—" },
+    { label: "52W High",  value: (quote?.weekHigh52 ?? 0) > 0 ? `${cs}${quote!.weekHigh52.toLocaleString("en-IN")}` : "—" },
+    { label: "52W Low",   value: (quote?.weekLow52 ?? 0) > 0  ? `${cs}${quote!.weekLow52.toLocaleString("en-IN")}`  : "—" },
+    { label: "Mkt Cap",   value: quote?.marketCap ? `${cs}${(quote.marketCap / 1e12).toFixed(2)}T` : "—" },
     { label: "P/E",       value: quote?.pe?.toFixed(1) ?? "—" },
     { label: "EPS",       value: quote?.eps?.toFixed(2) ?? "—" },
     { label: "Lot Size",  value: meta.tradableLabel },
@@ -370,12 +366,12 @@ function MarketDataPanel({ instrument, quote }: { instrument: Instrument; quote:
           ) : (
             <>
               <p className="text-2xl font-bold text-[var(--text-primary)]">
-                ₹{price.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                {cs}{price.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
               </p>
               <p className={`text-sm font-bold ${isUp ? "text-[var(--accent-label)]" : "text-[var(--error-label)]"}`}>
                 {isUp ? "+" : ""}{changePct.toFixed(2)}%
                 {quote && quote.change !== 0 && (
-                  <span className="ml-1 text-xs opacity-60">({isUp ? "+" : ""}₹{quote.change.toFixed(2)})</span>
+                  <span className="ml-1 text-xs opacity-60">({isUp ? "+" : ""}{cs}{quote.change.toFixed(2)})</span>
                 )}
               </p>
             </>
@@ -386,8 +382,8 @@ function MarketDataPanel({ instrument, quote }: { instrument: Instrument; quote:
       {high > 0 && low > 0 && (
         <div className="mt-5 rounded-2xl bg-[var(--background)]/80 p-4">
           <div className="mb-2 flex justify-between text-xs text-[var(--text-muted)]">
-            <span>Low ₹{low.toLocaleString("en-IN")}</span>
-            <span>High ₹{high.toLocaleString("en-IN")}</span>
+            <span>Low {cs}{low.toLocaleString("en-IN")}</span>
+            <span>High {cs}{high.toLocaleString("en-IN")}</span>
           </div>
           <div className="h-2 rounded-full bg-[var(--card-border)]">
             <div className="h-2 rounded-full bg-emerald-400 transition-all duration-500" style={{ width: `${position}%` }} />
@@ -497,7 +493,7 @@ function TradeTicket({ instrument, effectivePrice, balance }: { instrument: Inst
           <p className="text-xs text-[var(--text-muted)]">Instrument</p>
           <p className="mt-1 font-bold text-[var(--text-primary)]">{instrument.title}</p>
           <p className="mt-1 text-sm text-[var(--accent-label)]">
-            {priceReady ? `₹${effectivePrice.toLocaleString("en-IN", { minimumFractionDigits: 2 })}` : "Loading..."}
+            {priceReady ? `${getCurrencySign(instrument.symbol)}${effectivePrice.toLocaleString("en-IN", { minimumFractionDigits: 2 })}` : "Loading..."}
           </p>
           <p className="mt-1 text-xs text-[var(--text-muted)]">{meta.product} · {meta.tradableLabel}</p>
         </div>

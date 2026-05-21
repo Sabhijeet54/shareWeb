@@ -1,32 +1,13 @@
-<<<<<<< Updated upstream
-// GET /api/chart?symbol=RELIANCE.NS&interval=5m&range=1d
-// Proxies Yahoo Finance chart — free, no API key
-=======
 // ─── Multi-provider Chart API ─────────────────────────────────────────────
 // Primary: Yahoo Finance v8 chart
 // Fallback: Finnhub candle endpoint
 //
 // GET /api/chart?symbol=RELIANCE&interval=5m&range=1d
 // Response: { chart: { result: [{ timestamp, indicators: { quote: [{ open, high, low, close, volume }] } }] } }
->>>>>>> Stashed changes
 
 import { NextRequest, NextResponse } from "next/server";
 import { toYahoo, CHART_INTERVALS } from "@/lib/symbolMap";
 
-<<<<<<< Updated upstream
-const HEADERS = {
-  "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
-  "Accept": "application/json, text/plain, */*",
-  "Accept-Language": "en-US,en;q=0.9",
-  "Origin": "https://finance.yahoo.com",
-  "Referer": "https://finance.yahoo.com/",
-};
-
-export async function GET(req: NextRequest) {
-  const symbol = req.nextUrl.searchParams.get("symbol");
-  const interval = req.nextUrl.searchParams.get("interval") ?? "5m";
-  const range = req.nextUrl.searchParams.get("range") ?? "1d";
-=======
 const UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
 
 /** Map our canonical intervals to Yahoo Finance intervals */
@@ -120,44 +101,11 @@ export async function GET(req: NextRequest) {
   const symbol = sp.get("symbol") ?? "";
   const interval = sp.get("interval") ?? sp.get("resolution") ?? "D";
   const range = sp.get("range") ?? undefined;
->>>>>>> Stashed changes
 
   if (!symbol) {
     return NextResponse.json({ chart: { result: [] } }, { status: 400 });
   }
 
-<<<<<<< Updated upstream
-  const urls = [
-    `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?interval=${interval}&range=${range}&includePrePost=false&events=div%2Csplits`,
-    `https://query2.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?interval=${interval}&range=${range}&includePrePost=false&events=div%2Csplits`,
-  ];
-
-  for (const url of urls) {
-    try {
-      const res = await fetch(url, {
-        headers: HEADERS,
-        cache: "no-store",
-      });
-
-      if (!res.ok) continue;
-
-      const data = await res.json();
-      const result = data?.chart?.result?.[0];
-
-      if (result?.timestamp?.length > 0) {
-        return NextResponse.json(data, {
-          headers: { "Cache-Control": "no-store, max-age=0" },
-        });
-      }
-    } catch {
-      // try next url
-    }
-  }
-
-  return NextResponse.json(
-    { chart: { result: null }, error: "Chart data unavailable" },
-    { status: 200, headers: { "Cache-Control": "no-store" } }
-=======
   // Check if interval is valid
   const validIntervals = [...CHART_INTERVALS.map((i) => i.value), "1m", "5m", "15m", "30m", "1h", "1d", "1wk", "1mo"];
   if (!validIntervals.includes(interval)) {
@@ -189,6 +137,5 @@ export async function GET(req: NextRequest) {
   return NextResponse.json(
     { chart: { result: [] }, error: "No chart data available" },
     { status: 200 }
->>>>>>> Stashed changes
   );
 }

@@ -4,22 +4,10 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { FiRefreshCw } from "react-icons/fi";
 import { equityInstruments, indexInstruments } from "@/lib/marketData";
 
-<<<<<<< Updated upstream
-import { useState } from "react";
-import { generateOptionsChain } from "@/lib/marketData";
-import { useLiveSingleQuote } from "@/lib/useLiveQuotes";
-
-const UNDERLYINGS = [
-  { label: "NIFTY", symbol: "NIFTY", spotFallback: 22480 },
-  { label: "BANKNIFTY", symbol: "BANKNIFTY", spotFallback: 48260 },
-  { label: "FINNIFTY", symbol: "FINNIFTY", spotFallback: 21440 },
-  { label: "MIDCPNIFTY", symbol: "MIDCPNIFTY", spotFallback: 10880 },
-=======
 // Combine stocks + indices for F&O
 const FNO_INSTRUMENTS = [
   ...indexInstruments.filter(i => ["NIFTY 50", "BANK NIFTY"].includes(i.symbol)),
   ...equityInstruments.slice(0, 30),
->>>>>>> Stashed changes
 ];
 
 interface OptionLeg {

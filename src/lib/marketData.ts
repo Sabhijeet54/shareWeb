@@ -14,16 +14,6 @@ export type WatchlistKey =
   | "crypto";
 
 export const watchTabs: Array<{ key: WatchlistKey; label: string }> = [
-<<<<<<< Updated upstream
-  { key: "indices", label: "Indices" },
-  { key: "indexFut", label: "Index Fut" },
-  { key: "indexOpt", label: "Index Opt" },
-  { key: "stocks", label: "Stocks" },
-  { key: "stockFut", label: "Stock Fut" },
-  { key: "stockOpt", label: "Stock Opt" },
-  { key: "commodities", label: "Commodities" },
-  { key: "crypto", label: "Crypto" },
-=======
   { key: "indices",    label: "Indices" },
   { key: "stocks",     label: "Stocks" },
   { key: "stockFut",   label: "F&O" },
@@ -31,71 +21,12 @@ export const watchTabs: Array<{ key: WatchlistKey; label: string }> = [
   { key: "commodities",label: "Commodities" },
   { key: "forex",      label: "Forex" },
   { key: "crypto",     label: "Crypto" },
->>>>>>> Stashed changes
 ];
 
 const Z: Pick<Instrument, "price" | "change" | "volume" | "high" | "low"> = { price: 0, change: 0, volume: "—", high: 0, low: 0 };
 
 export const watchlists: Record<WatchlistKey, Instrument[]> = {
   indices: [
-<<<<<<< Updated upstream
-    { symbol: "NIFTY",      title: "NIFTY 50",   subtitle: "Index",      price: 0, change: 0, volume: "—", high: 0, low: 0, sector: "Index" },
-    { symbol: "SENSEX",     title: "SENSEX",      subtitle: "Index",      price: 0, change: 0, volume: "—", high: 0, low: 0, sector: "Index" },
-    { symbol: "BANKNIFTY",  title: "BANKNIFTY",   subtitle: "Index",      price: 0, change: 0, volume: "—", high: 0, low: 0, sector: "Banking" },
-    { symbol: "FINNIFTY",   title: "FINNIFTY",    subtitle: "Index",      price: 0, change: 0, volume: "—", high: 0, low: 0, sector: "Finance" },
-    { symbol: "MIDCPNIFTY", title: "MIDCPNIFTY",  subtitle: "Index",      price: 0, change: 0, volume: "—", high: 0, low: 0, sector: "Mid Cap" },
-    { symbol: "INDIAVIX",   title: "INDIA VIX",   subtitle: "Volatility", price: 0, change: 0, volume: "—", high: 0, low: 0, sector: "Volatility" },
-  ],
-  indexFut: [
-    { symbol: "NIFTY FUT",      title: "NIFTY FUT",      subtitle: "Current month", price: 0, change: 0, volume: "—", high: 0, low: 0 },
-    { symbol: "BANKNIFTY FUT",  title: "BANKNIFTY FUT",  subtitle: "Current month", price: 0, change: 0, volume: "—", high: 0, low: 0 },
-    { symbol: "FINNIFTY FUT",   title: "FINNIFTY FUT",   subtitle: "Current month", price: 0, change: 0, volume: "—", high: 0, low: 0 },
-    { symbol: "MIDCPNIFTY FUT", title: "MIDCPNIFTY FUT", subtitle: "Current month", price: 0, change: 0, volume: "—", high: 0, low: 0 },
-  ],
-  indexOpt: [
-    { symbol: "NIFTY CE ATM",       title: "NIFTY CE (ATM)",      subtitle: "Call option", price: 0, change: 0, volume: "—", high: 0, low: 0 },
-    { symbol: "NIFTY PE ATM",       title: "NIFTY PE (ATM)",      subtitle: "Put option",  price: 0, change: 0, volume: "—", high: 0, low: 0 },
-    { symbol: "BANKNIFTY CE ATM",   title: "BANKNIFTY CE (ATM)",  subtitle: "Call option", price: 0, change: 0, volume: "—", high: 0, low: 0 },
-    { symbol: "BANKNIFTY PE ATM",   title: "BANKNIFTY PE (ATM)",  subtitle: "Put option",  price: 0, change: 0, volume: "—", high: 0, low: 0 },
-    { symbol: "FINNIFTY CE ATM",    title: "FINNIFTY CE (ATM)",   subtitle: "Call option", price: 0, change: 0, volume: "—", high: 0, low: 0 },
-    { symbol: "MIDCPNIFTY PE ATM",  title: "MIDCPNIFTY PE (ATM)", subtitle: "Put option",  price: 0, change: 0, volume: "—", high: 0, low: 0 },
-  ],
-  stocks: [
-    { symbol: "RELIANCE",  title: "RELIANCE",      subtitle: "NSE equity", price: 0, change: 0, volume: "—", high: 0, low: 0, sector: "Oil & Gas" },
-    { symbol: "TCS",       title: "TCS",            subtitle: "NSE equity", price: 0, change: 0, volume: "—", high: 0, low: 0, sector: "IT" },
-    { symbol: "HDFCBANK",  title: "HDFC BANK",      subtitle: "NSE equity", price: 0, change: 0, volume: "—", high: 0, low: 0, sector: "Banking" },
-    { symbol: "INFY",      title: "INFOSYS",        subtitle: "NSE equity", price: 0, change: 0, volume: "—", high: 0, low: 0, sector: "IT" },
-    { symbol: "ICICIBANK", title: "ICICI BANK",     subtitle: "NSE equity", price: 0, change: 0, volume: "—", high: 0, low: 0, sector: "Banking" },
-    { symbol: "SBIN",      title: "SBI",            subtitle: "NSE equity", price: 0, change: 0, volume: "—", high: 0, low: 0, sector: "Banking" },
-    { symbol: "LT",        title: "L&T",            subtitle: "NSE equity", price: 0, change: 0, volume: "—", high: 0, low: 0, sector: "Infra" },
-    { symbol: "TATAMOTORS",title: "TATA MOTORS",    subtitle: "NSE equity", price: 0, change: 0, volume: "—", high: 0, low: 0, sector: "Auto" },
-    { symbol: "WIPRO",     title: "WIPRO",          subtitle: "NSE equity", price: 0, change: 0, volume: "—", high: 0, low: 0, sector: "IT" },
-    { symbol: "AXISBANK",  title: "AXIS BANK",      subtitle: "NSE equity", price: 0, change: 0, volume: "—", high: 0, low: 0, sector: "Banking" },
-    { symbol: "MARUTI",    title: "MARUTI SUZUKI",  subtitle: "NSE equity", price: 0, change: 0, volume: "—", high: 0, low: 0, sector: "Auto" },
-    { symbol: "SUNPHARMA", title: "SUN PHARMA",     subtitle: "NSE equity", price: 0, change: 0, volume: "—", high: 0, low: 0, sector: "Pharma" },
-    { symbol: "BAJFINANCE",title: "BAJAJ FINANCE",  subtitle: "NSE equity", price: 0, change: 0, volume: "—", high: 0, low: 0, sector: "Finance" },
-    { symbol: "KOTAKBANK", title: "KOTAK BANK",     subtitle: "NSE equity", price: 0, change: 0, volume: "—", high: 0, low: 0, sector: "Banking" },
-    { symbol: "HINDUNILVR",title: "HINDUSTAN UNILEVER", subtitle: "NSE equity", price: 0, change: 0, volume: "—", high: 0, low: 0, sector: "FMCG" },
-    { symbol: "TITAN",     title: "TITAN",          subtitle: "NSE equity", price: 0, change: 0, volume: "—", high: 0, low: 0, sector: "Consumer" },
-    { symbol: "ADANIPORTS",title: "ADANI PORTS",    subtitle: "NSE equity", price: 0, change: 0, volume: "—", high: 0, low: 0, sector: "Infra" },
-    { symbol: "ULTRACEMCO",title: "ULTRATECH CEMENT",subtitle: "NSE equity", price: 0, change: 0, volume: "—", high: 0, low: 0, sector: "Cement" },
-    { symbol: "POWERGRID", title: "POWER GRID",     subtitle: "NSE equity", price: 0, change: 0, volume: "—", high: 0, low: 0, sector: "Utilities" },
-    { symbol: "NESTLEIND", title: "NESTLE INDIA",   subtitle: "NSE equity", price: 0, change: 0, volume: "—", high: 0, low: 0, sector: "FMCG" },
-  ],
-  stockFut: [
-    { symbol: "RELIANCE FUT", title: "RELIANCE FUT", subtitle: "Current month", price: 0, change: 0, volume: "—", high: 0, low: 0 },
-    { symbol: "TCS FUT",      title: "TCS FUT",      subtitle: "Current month", price: 0, change: 0, volume: "—", high: 0, low: 0 },
-    { symbol: "HDFCBANK FUT", title: "HDFCBANK FUT", subtitle: "Current month", price: 0, change: 0, volume: "—", high: 0, low: 0 },
-    { symbol: "SBIN FUT",     title: "SBIN FUT",     subtitle: "Current month", price: 0, change: 0, volume: "—", high: 0, low: 0 },
-    { symbol: "INFY FUT",     title: "INFY FUT",     subtitle: "Current month", price: 0, change: 0, volume: "—", high: 0, low: 0 },
-  ],
-  stockOpt: [
-    { symbol: "RELIANCE CE ATM", title: "RELIANCE CE (ATM)", subtitle: "Call option", price: 0, change: 0, volume: "—", high: 0, low: 0 },
-    { symbol: "RELIANCE PE ATM", title: "RELIANCE PE (ATM)", subtitle: "Put option",  price: 0, change: 0, volume: "—", high: 0, low: 0 },
-    { symbol: "TCS CE ATM",      title: "TCS CE (ATM)",      subtitle: "Call option", price: 0, change: 0, volume: "—", high: 0, low: 0 },
-    { symbol: "SBIN CE ATM",     title: "SBIN CE (ATM)",     subtitle: "Call option", price: 0, change: 0, volume: "—", high: 0, low: 0 },
-    { symbol: "HDFCBANK PE ATM", title: "HDFCBANK PE (ATM)", subtitle: "Put option",  price: 0, change: 0, volume: "—", high: 0, low: 0 },
-=======
     { symbol: "NIFTY 50",    title: "NIFTY 50",      subtitle: "NSE Index",  ...Z },
     { symbol: "SENSEX",      title: "SENSEX",         subtitle: "BSE Index",  ...Z },
     { symbol: "BANK NIFTY",  title: "BANK NIFTY",     subtitle: "NSE Index",  ...Z },
@@ -210,7 +141,6 @@ export const watchlists: Record<WatchlistKey, Instrument[]> = {
     { symbol: "SBIN CE ATM",     title: "SBIN CE (ATM)",     subtitle: "Call option", ...Z },
     { symbol: "BAJFINANCE CE ATM",title: "BAJFINANCE CE (ATM)",subtitle: "Call option", ...Z },
     { symbol: "ITC PE ATM",      title: "ITC PE (ATM)",      subtitle: "Put option",  ...Z },
->>>>>>> Stashed changes
   ],
   commodities: [
     { symbol: "GOLD",       title: "Gold (Intl)",      subtitle: "Commodity", ...Z },
@@ -295,33 +225,24 @@ export function getContractMeta(instrument: Instrument): ContractMeta {
   const isOption = instrument.subtitle.toLowerCase().includes("option");
   const isFuture = instrument.subtitle.toLowerCase().includes("current month");
 
-  if (symbol.includes("BANKNIFTY")) {
+  if (sym.includes("BANKNIFTY")) {
     return { lotSize: 30, product: isOption ? "OPT" : isFuture ? "FUT" : "INDEX", marginRate: isFuture ? 0.15 : 1, tradableLabel: "30 qty / lot" };
   }
-  if (symbol.includes("FINNIFTY")) {
+  if (sym.includes("FINNIFTY")) {
     return { lotSize: 60, product: isOption ? "OPT" : isFuture ? "FUT" : "INDEX", marginRate: isFuture ? 0.15 : 1, tradableLabel: "60 qty / lot" };
   }
-  if (symbol.includes("MIDCPNIFTY")) {
+  if (sym.includes("MIDCPNIFTY")) {
     return { lotSize: 120, product: isOption ? "OPT" : isFuture ? "FUT" : "INDEX", marginRate: isFuture ? 0.15 : 1, tradableLabel: "120 qty / lot" };
   }
-  if (symbol.includes("SENSEX")) {
+  if (sym.includes("SENSEX")) {
     return { lotSize: 20, product: "INDEX", marginRate: 1, tradableLabel: "20 qty / lot" };
   }
-  if (symbol.includes("NIFTY")) {
+  if (sym.includes("NIFTY")) {
     return { lotSize: 75, product: isOption ? "OPT" : isFuture ? "FUT" : "INDEX", marginRate: isFuture ? 0.15 : 1, tradableLabel: "75 qty / lot" };
   }
   if (isFuture || isOption) {
-<<<<<<< Updated upstream
-    const stockLots: Record<string, number> = {
-      RELIANCE: 500, TCS: 175, HDFCBANK: 550, SBIN: 1500,
-      WIPRO: 1600, AXISBANK: 1200, MARUTI: 100, SUNPHARMA: 700,
-      BAJFINANCE: 125, KOTAKBANK: 400, INFY: 400,
-    };
-    const lotSize = Object.entries(stockLots).find(([key]) => symbol.includes(key))?.[1] ?? 500;
-=======
     const spotKey = getDerivativeSpotSymbol(sym) ?? sym;
     const lotSize = NSE_LOT_SIZES[spotKey] ?? 500;
->>>>>>> Stashed changes
     return { lotSize, product: isOption ? "OPT" : "FUT", marginRate: isFuture ? 0.18 : 1, tradableLabel: `${lotSize} qty / lot` };
   }
   if (instrument.subtitle === "Commodity") return { lotSize: 1, product: "COMMODITY", marginRate: 1, tradableLabel: "1 unit" };
@@ -332,18 +253,6 @@ export function getContractMeta(instrument: Instrument): ContractMeta {
 
 // ─── Sector metadata ────────────────────────────────────────────────────────
 export const sectorData = [
-<<<<<<< Updated upstream
-  { name: "IT",       change: 0, marketCap: "—", stocks: ["TCS", "INFY", "WIPRO"] },
-  { name: "Banking",  change: 0, marketCap: "—", stocks: ["HDFCBANK", "ICICIBANK", "SBIN", "AXISBANK", "KOTAKBANK"] },
-  { name: "Pharma",   change: 0, marketCap: "—", stocks: ["SUNPHARMA"] },
-  { name: "Auto",     change: 0, marketCap: "—", stocks: ["TATAMOTORS", "MARUTI"] },
-  { name: "Oil & Gas",change: 0, marketCap: "—", stocks: ["RELIANCE"] },
-  { name: "Infra",    change: 0, marketCap: "—", stocks: ["LT", "ADANIPORTS"] },
-  { name: "FMCG",     change: 0, marketCap: "—", stocks: ["HINDUNILVR", "NESTLEIND"] },
-  { name: "Finance",  change: 0, marketCap: "—", stocks: ["BAJFINANCE"] },
-  { name: "Consumer", change: 0, marketCap: "—", stocks: ["TITAN"] },
-  { name: "Utilities",change: 0, marketCap: "—", stocks: ["POWERGRID"] },
-=======
   { name: "Banking",   change: 0, marketCap: "—", stocks: ["HDFCBANK","ICICIBANK","SBIN","KOTAKBANK","AXISBANK"] },
   { name: "IT",        change: 0, marketCap: "—", stocks: ["TCS","INFY","WIPRO","HCLTECH","TECHM"] },
   { name: "Oil & Gas", change: 0, marketCap: "—", stocks: ["RELIANCE","ONGC","BPCL"] },
@@ -356,7 +265,6 @@ export const sectorData = [
   { name: "Telecom",   change: 0, marketCap: "—", stocks: ["BHARTIARTL"] },
   { name: "Consumer",  change: 0, marketCap: "—", stocks: ["TITAN","ASIANPAINT","PIDILITIND"] },
   { name: "Defence",   change: 0, marketCap: "—", stocks: ["HAL","BEL"] },
->>>>>>> Stashed changes
 ];
 
 // ─── Options chain (Black-Scholes based) ────────────────────────────────────

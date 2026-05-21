@@ -13,7 +13,7 @@ import {
   type HistogramData,
 } from "lightweight-charts";
 import { FiMaximize2, FiMinimize2, FiRefreshCw, FiArrowLeft } from "react-icons/fi";
-import { CHART_INTERVALS } from "@/lib/symbolMap";
+import { CHART_INTERVALS, getCurrencySign } from "@/lib/symbolMap";
 import { useChartData, type OHLCVBar } from "@/lib/useChartData";
 import { useLiveSingleQuote } from "@/lib/useLiveQuotes";
 
@@ -142,7 +142,7 @@ export function ChartPanel({ symbol, onBack }: { symbol: string; onBack?: () => 
   const [fullscreen, setFullscreen] = useState(false);
 
   const { bars, isLoading, isError } = useChartData(symbol, interval.value, interval.range);
-  const liveQuote = useLiveSingleQuote(symbol, 2500);
+  const liveQuote = useLiveSingleQuote(symbol, 1500);
 
   const containerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
@@ -336,6 +336,7 @@ export function ChartPanel({ symbol, onBack }: { symbol: string; onBack?: () => 
     });
   }
 
+  const cs = getCurrencySign(symbol);
   const priceColor = liveQuote && liveQuote.changePct >= 0 ? "text-[var(--accent-label)]" : "text-[var(--error-label)]";
 
   return (
@@ -349,11 +350,11 @@ export function ChartPanel({ symbol, onBack }: { symbol: string; onBack?: () => 
             {liveQuote && !liveQuote.isLoading && (
               <div className="mt-1 flex items-baseline gap-2">
                 <span className="text-2xl font-bold text-[var(--text-primary)]">
-                  ₹{liveQuote.price.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                  {cs}{liveQuote.price.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
                 </span>
                 <span className={`text-sm font-bold ${priceColor}`}>
                   {liveQuote.changePct >= 0 ? "+" : ""}{liveQuote.changePct.toFixed(2)}%
-                  {" "}({liveQuote.change >= 0 ? "+" : ""}₹{liveQuote.change.toFixed(2)})
+                  {" "}({liveQuote.change >= 0 ? "+" : ""}{cs}{liveQuote.change.toFixed(2)})
                 </span>
               </div>
             )}
@@ -430,12 +431,12 @@ export function ChartPanel({ symbol, onBack }: { symbol: string; onBack?: () => 
         {liveQuote && !liveQuote.isLoading && (
           <div className="mt-4 grid grid-cols-3 gap-2 text-xs sm:grid-cols-6">
             {[
-              { label: "Open", value: `₹${liveQuote.open.toLocaleString("en-IN")}` },
-              { label: "High", value: `₹${liveQuote.high.toLocaleString("en-IN")}` },
-              { label: "Low", value: `₹${liveQuote.low.toLocaleString("en-IN")}` },
-              { label: "Prev Close", value: `₹${liveQuote.prevClose.toLocaleString("en-IN")}` },
-              { label: "52W High", value: `₹${liveQuote.weekHigh52.toLocaleString("en-IN")}` },
-              { label: "52W Low", value: `₹${liveQuote.weekLow52.toLocaleString("en-IN")}` },
+              { label: "Open", value: `${cs}${liveQuote.open.toLocaleString("en-IN")}` },
+              { label: "High", value: `${cs}${liveQuote.high.toLocaleString("en-IN")}` },
+              { label: "Low", value: `${cs}${liveQuote.low.toLocaleString("en-IN")}` },
+              { label: "Prev Close", value: `${cs}${liveQuote.prevClose.toLocaleString("en-IN")}` },
+              { label: "52W High", value: `${cs}${liveQuote.weekHigh52.toLocaleString("en-IN")}` },
+              { label: "52W Low", value: `${cs}${liveQuote.weekLow52.toLocaleString("en-IN")}` },
             ].map((stat) => (
               <div key={stat.label} className="rounded-xl bg-[var(--background)]/80 p-2">
                 <p className="text-[var(--text-muted)]">{stat.label}</p>

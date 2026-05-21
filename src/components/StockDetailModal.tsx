@@ -15,6 +15,7 @@ import { db } from "@/lib/firebase";
 import { getContractMeta } from "@/lib/marketData";
 import { useLiveSingleQuote } from "@/lib/useLiveQuotes";
 import { useChartData } from "@/lib/useChartData";
+import { getCurrencySign } from "@/lib/symbolMap";
 import type { Instrument, TradeOrder } from "@/types/app";
 
 type Props = {
@@ -251,13 +252,13 @@ export function StockDetailModal({ instrument, balance, onClose }: Props) {
             ) : (
               <>
                 <p className="text-2xl font-bold text-[var(--text-primary)]">
-                  ₹{livePrice.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                  {getCurrencySign(instrument.symbol)}{livePrice.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
                 </p>
                 <p className={`text-sm font-bold ${isUp ? "text-[var(--accent-label)]" : "text-[var(--error-label)]"}`}>
                   {isUp ? "+" : ""}{liveChangePct.toFixed(2)}%
                   {quote && !quote.isLoading && (
                     <span className="ml-1 opacity-60 text-xs">
-                      ({isUp ? "+" : ""}₹{quote.change.toFixed(2)})
+                      ({isUp ? "+" : ""}{getCurrencySign(instrument.symbol)}{quote.change.toFixed(2)})
                     </span>
                   )}
                 </p>
@@ -272,9 +273,9 @@ export function StockDetailModal({ instrument, balance, onClose }: Props) {
         {/* Quick stats */}
         <div className="mt-3 grid grid-cols-4 gap-2 px-5">
           {[
-            { label: "Open", value: `₹${(quote?.open || instrument.open || livePrice).toLocaleString("en-IN")}` },
-            { label: "High", value: `₹${(quote?.high || instrument.high).toLocaleString("en-IN")}` },
-            { label: "Low", value: `₹${(quote?.low || instrument.low).toLocaleString("en-IN")}` },
+            { label: "Open", value: `${getCurrencySign(instrument.symbol)}${(quote?.open || instrument.open || livePrice).toLocaleString("en-IN")}` },
+            { label: "High", value: `${getCurrencySign(instrument.symbol)}${(quote?.high || instrument.high).toLocaleString("en-IN")}` },
+            { label: "Low", value: `${getCurrencySign(instrument.symbol)}${(quote?.low || instrument.low).toLocaleString("en-IN")}` },
             {
               label: "Volume",
               value: quote?.volume
@@ -402,7 +403,7 @@ export function StockDetailModal({ instrument, balance, onClose }: Props) {
               <div className="rounded-2xl bg-[var(--background)]/80 p-3">
                 <p className="text-xs text-[var(--text-muted)]">At Market</p>
                 <p className="mt-1 text-lg font-bold text-[var(--accent-label)]">
-                  ₹{livePrice.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                  {getCurrencySign(instrument.symbol)}{livePrice.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
                 </p>
                 <p className="text-[10px] text-[var(--text-muted)]">Live price</p>
               </div>

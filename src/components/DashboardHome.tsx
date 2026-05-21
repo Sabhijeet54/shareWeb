@@ -5,22 +5,7 @@ import { FiTrendingUp, FiTrendingDown, FiActivity, FiClock, FiBarChart2, FiGlobe
 import { useLiveQuotes } from "@/lib/useLiveQuotes";
 import { equityInstruments, equitySymbols, indexSymbols, sectorData } from "@/lib/marketData";
 
-<<<<<<< Updated upstream
-// All key symbols we want on the dashboard
-const EQUITY_SYMBOLS = [
-  "RELIANCE", "TCS", "HDFCBANK", "INFY", "ICICIBANK",
-  "SBIN", "LT", "TATAMOTORS", "WIPRO", "AXISBANK",
-  "MARUTI", "SUNPHARMA",
-];
-
-const INDEX_SYMBOLS = ["NIFTY", "SENSEX", "BANKNIFTY", "FINNIFTY", "INDIAVIX"];
-const DASHBOARD_SYMBOLS = [...INDEX_SYMBOLS, ...EQUITY_SYMBOLS];
-
-// Static fallback from marketData — always available even if API fails
-const STATIC_STOCKS = watchlists.stocks;
-=======
 const DASHBOARD_SYMBOLS = [...indexSymbols, ...equitySymbols];
->>>>>>> Stashed changes
 
 function isMarketOpen() {
   const now = new Date();
@@ -58,7 +43,7 @@ export function DashboardHome({
   balance: number;
   onSelectSymbol?: (symbol: string) => void;
 }) {
-  const quotes = useLiveQuotes(DASHBOARD_SYMBOLS, 2500);
+  const quotes = useLiveQuotes(DASHBOARD_SYMBOLS, 1500);
   const { open, time } = useMarketClock();
 
   // Build enriched stock list from live quotes only
@@ -125,15 +110,10 @@ export function DashboardHome({
     : 0;
   const dayPnlPct = balance > 0 ? (dayPnl / balance) * 100 : 0;
 
-<<<<<<< Updated upstream
-  const niftyQ = quotes["NIFTY"];
-  const vixQ = quotes["INDIAVIX"];
-=======
   const firstSummarySymbol = DASHBOARD_SYMBOLS[0] ?? "";
   const secondSummarySymbol = DASHBOARD_SYMBOLS[1] ?? "";
   const firstSummaryQuote = firstSummarySymbol ? quotes[firstSummarySymbol] : undefined;
   const secondSummaryQuote = secondSummarySymbol ? quotes[secondSummarySymbol] : undefined;
->>>>>>> Stashed changes
 
   return (
     <div className="space-y-5">
@@ -149,27 +129,12 @@ export function DashboardHome({
           <FiClock size={11} />
           <span>{time} IST</span>
         </div>
-<<<<<<< Updated upstream
-        <span className="text-xs text-slate-500">NSE · BSE · {anyLiveLoaded ? "Live ●" : "Static"}</span>
-      </div>
-
-      {/* Key indices */}
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
-        {[
-          { symbol: "NIFTY", label: "NIFTY 50", fallback: 22480 },
-          { symbol: "SENSEX", label: "SENSEX", fallback: 74020 },
-          { symbol: "BANKNIFTY", label: "BANKNIFTY", fallback: 48260 },
-          { symbol: "FINNIFTY", label: "FINNIFTY", fallback: 21440 },
-          { symbol: "INDIAVIX", label: "INDIA VIX", fallback: 14.8 },
-        ].map(({ symbol, label, fallback }) => {
-=======
         <span className="text-xs text-[var(--text-muted)]">NSE / BSE · {anyLiveLoaded ? "Live ●" : "Waiting for feed"}</span>
       </div>
 
       {/* Index Cards */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         {indexSymbols.slice(0, 8).map((symbol) => {
->>>>>>> Stashed changes
           const q = quotes[symbol];
           const hasLivePrice = Boolean(q && !q.isLoading && q.price > 0);
           const price = hasLivePrice ? q!.price : 0;
@@ -222,17 +187,6 @@ export function DashboardHome({
             </p>
           </div>
           <div>
-<<<<<<< Updated upstream
-            <p className="text-xs text-slate-500">NIFTY 50</p>
-            <p className={`mt-1 text-lg font-bold ${(niftyQ?.changePct ?? 0) >= 0 ? "text-emerald-300" : "text-red-300"}`}>
-              {niftyQ?.isLoading ? "—" : `${(niftyQ?.changePct ?? 0) >= 0 ? "+" : ""}${(niftyQ?.changePct ?? 0).toFixed(2)}%`}
-            </p>
-          </div>
-          <div>
-            <p className="text-xs text-slate-500">INDIA VIX</p>
-            <p className="mt-1 text-lg font-bold text-amber-300">
-              {vixQ?.isLoading ? "—" : (vixQ?.price ?? 14.8).toFixed(2)}
-=======
             <p className="text-xs text-[var(--text-muted)]">{firstSummarySymbol || "—"}</p>
             <p className={`mt-1 text-lg font-bold ${(firstSummaryQuote?.changePct ?? 0) >= 0 ? "text-[var(--accent-label)]" : "text-[var(--error-label)]"}`}>
               {firstSummaryQuote?.isLoading ? "—" : `${(firstSummaryQuote?.changePct ?? 0) >= 0 ? "+" : ""}${(firstSummaryQuote?.changePct ?? 0).toFixed(2)}%`}
@@ -242,7 +196,6 @@ export function DashboardHome({
             <p className="text-xs text-[var(--text-muted)]">{secondSummarySymbol || "—"}</p>
             <p className="mt-1 text-lg font-bold text-[var(--warn-label)]">
               {secondSummaryQuote?.isLoading ? "—" : (secondSummaryQuote?.price ?? 0).toFixed(2)}
->>>>>>> Stashed changes
             </p>
           </div>
         </div>

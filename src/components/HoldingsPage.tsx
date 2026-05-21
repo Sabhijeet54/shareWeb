@@ -73,13 +73,8 @@ export function HoldingsPage() {
   const { user } = useAuth();
   const holdings = useHoldings(user?.uid ?? "");
 
-<<<<<<< Updated upstream
   const holdingSymbols = holdings.map((h) => h.symbol).filter((s) => s in YAHOO_SYMBOL_MAP);
-  const quotes = useLiveQuotes(holdingSymbols, 20000);
-=======
-  const holdingSymbols = holdings.map((h) => h.symbol).filter((s) => s in FINNHUB_SYMBOL_MAP);
-  const quotes = useLiveQuotes(holdingSymbols, 2500);
->>>>>>> Stashed changes
+  const quotes = useLiveQuotes(holdingSymbols, 1500);
 
   const enriched = holdings.map((h) => {
     const q = quotes[h.symbol];

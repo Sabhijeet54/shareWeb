@@ -38,11 +38,7 @@ export function TradingJournal() {
 
   // Form state
   const [date, setDate] = useState(new Date().toISOString().split("T")[0]);
-<<<<<<< Updated upstream
-  const [symbol, setSymbol] = useState("RELIANCE");
-=======
   const [symbol, setSymbol] = useState("");
->>>>>>> Stashed changes
   const [side, setSide] = useState<"BUY" | "SELL">("BUY");
   const [entryPrice, setEntryPrice] = useState("");
   const [exitPrice, setExitPrice] = useState("");

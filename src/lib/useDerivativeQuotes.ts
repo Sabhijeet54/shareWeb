@@ -75,62 +75,21 @@ export function useDerivativeQuotes(
       return q;
     };
 
-<<<<<<< Updated upstream
-    // ── Futures: F = S * e^(r * T) ──────────────────────────────────────────
-    const futureMap: Array<[string, string]> = [
-      ["NIFTY FUT", "NIFTY"],
-      ["BANKNIFTY FUT", "BANKNIFTY"],
-      ["FINNIFTY FUT", "FINNIFTY"],
-      ["MIDCPNIFTY FUT", "MIDCPNIFTY"],
-      ["RELIANCE FUT", "RELIANCE"],
-      ["TCS FUT", "TCS"],
-      ["HDFCBANK FUT", "HDFCBANK"],
-      ["SBIN FUT", "SBIN"],
-      ["INFY FUT", "INFY"],
-    ];
-
-    for (const [futSym, spotSym] of futureMap) {
-      const q = derive(spotSym);
-=======
     for (const derivativeSymbol of derivativeSymbols) {
       const spotSymbol = getDerivativeSpotSymbol(derivativeSymbol);
       if (!spotSymbol) continue;
       const q = derive(spotSymbol);
->>>>>>> Stashed changes
       if (!q) {
         result[derivativeSymbol] = { price: 0, change: 0, changePct: 0, isLoading: true, isError: false };
         continue;
       }
 
-<<<<<<< Updated upstream
-    // ── ATM Options using Black-Scholes ────────────────────────────────────
-    type OptDef = [string, string, "CE" | "PE"];
-    const optionMap: OptDef[] = [
-      ["NIFTY CE ATM",       "NIFTY",      "CE"],
-      ["NIFTY PE ATM",       "NIFTY",      "PE"],
-      ["BANKNIFTY CE ATM",   "BANKNIFTY",  "CE"],
-      ["BANKNIFTY PE ATM",   "BANKNIFTY",  "PE"],
-      ["FINNIFTY CE ATM",    "FINNIFTY",   "CE"],
-      ["MIDCPNIFTY PE ATM",  "MIDCPNIFTY", "PE"],
-      ["RELIANCE CE ATM",    "RELIANCE",   "CE"],
-      ["RELIANCE PE ATM",    "RELIANCE",   "PE"],
-      ["TCS CE ATM",         "TCS",        "CE"],
-      ["SBIN CE ATM",        "SBIN",       "CE"],
-      ["HDFCBANK PE ATM",    "HDFCBANK",   "PE"],
-    ];
-
-    for (const [optSym, spotSym, type] of optionMap) {
-      const q = derive(spotSym);
-      if (!q) {
-        result[optSym] = { price: 0, change: 0, changePct: 0, isLoading: true, isError: false };
-=======
       if (derivativeSymbol.endsWith(" FUT")) {
         const futPrice = q.price * Math.exp(R * T);
         const prevFut = (q.prevClose > 0 ? q.prevClose : q.price) * Math.exp(R * T);
         const futChange = futPrice - prevFut;
         const futChangePct = prevFut > 0 ? (futChange / prevFut) * 100 : q.changePct;
         result[derivativeSymbol] = { price: futPrice, change: futChange, changePct: futChangePct, isLoading: false, isError: false };
->>>>>>> Stashed changes
         continue;
       }
 

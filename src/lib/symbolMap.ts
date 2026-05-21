@@ -1,40 +1,3 @@
-<<<<<<< Updated upstream
-// Maps internal app symbols → Yahoo Finance ticker symbols
-// Yahoo Finance gives free real-time data for NSE/BSE stocks + indices
-// NSE stocks use .NS suffix, BSE use .BO suffix
-// Indices use ^ prefix
-
-export const YAHOO_SYMBOL_MAP: Record<string, string> = {
-  // Indices
-  NIFTY: "^NSEI",
-  SENSEX: "^BSESN",
-  BANKNIFTY: "^NSEBANK",
-  FINNIFTY: "NIFTY_FIN_SERVICE.NS",
-  MIDCPNIFTY: "^CNXMIDCAP",
-  INDIAVIX: "^INDIAVIX",
-
-  // Large-cap NSE stocks
-  RELIANCE: "RELIANCE.NS",
-  TCS: "TCS.NS",
-  HDFCBANK: "HDFCBANK.NS",
-  INFY: "INFY.NS",
-  ICICIBANK: "ICICIBANK.NS",
-  SBIN: "SBIN.NS",
-  LT: "LT.NS",
-  TATAMOTORS: "TATAMOTORS.NS",
-  WIPRO: "WIPRO.NS",
-  AXISBANK: "AXISBANK.NS",
-  MARUTI: "MARUTI.NS",
-  SUNPHARMA: "SUNPHARMA.NS",
-  ADANIPORTS: "ADANIPORTS.NS",
-  BAJFINANCE: "BAJFINANCE.NS",
-  KOTAKBANK: "KOTAKBANK.NS",
-  HINDUNILVR: "HINDUNILVR.NS",
-  TITAN: "TITAN.NS",
-  NESTLEIND: "NESTLEIND.NS",
-  ULTRACEMCO: "ULTRACEMCO.NS",
-  POWERGRID: "POWERGRID.NS",
-=======
 // ─── SYMBOL MAPPING: Internal → Provider ────────────────────────────────────
 // Primary: Yahoo Finance (NSE .NS, BSE .BO, commodities, forex, crypto)
 // Fallback: Finnhub (limited free-tier Indian support)
@@ -51,7 +14,6 @@ export const YAHOO_SYMBOL_MAP: Record<string, string> = {
   "NIFTY REALTY":  "^CNXREALTY",
   "NIFTY ENERGY": "^CNXENERGY",
   "NIFTY FMCG":   "^CNXFMCG",
->>>>>>> Stashed changes
 
   // ── NSE Equities ──
   RELIANCE:    "RELIANCE.NS",
@@ -139,22 +101,8 @@ export const YAHOO_SYMBOL_MAP: Record<string, string> = {
   XRPUSD:      "XRP-USD",
 };
 
-<<<<<<< Updated upstream
-// Reverse map for display
-export const DISPLAY_NAME_MAP: Record<string, string> = {
-  "^NSEI": "NIFTY 50",
-  "^BSESN": "SENSEX",
-  "^NSEBANK": "BANKNIFTY",
-  "^INDIAVIX": "INDIA VIX",
-  "GC=F": "GOLD",
-  "SI=F": "SILVER",
-  "CL=F": "CRUDE OIL",
-  "NG=F": "NATURAL GAS",
-};
-=======
 // Keep FINNHUB_SYMBOL_MAP for backward-compat (some components reference it)
 export const FINNHUB_SYMBOL_MAP: Record<string, string> = { ...YAHOO_SYMBOL_MAP };
->>>>>>> Stashed changes
 
 // Resolve internal symbol → Yahoo Finance symbol
 export function toYahoo(symbol: string): string {
@@ -163,16 +111,25 @@ export function toYahoo(symbol: string): string {
   return symbol + ".NS";
 }
 
-<<<<<<< Updated upstream
-// Yahoo chart interval → display label
-=======
 // Alias for backward compat — routes & hooks call toFinnhub()
 export function toFinnhub(symbol: string): string {
   return toYahoo(symbol);
 }
 
+// ─── Currency sign helper ────────────────────────────────────────────────────
+// Returns the correct currency symbol for display based on the instrument
+const USD_SYMBOLS = new Set([
+  "GOLD", "SILVER", "CRUDEOIL", "NATURALGAS", "COPPER",  // commodities
+  "BTCUSD", "ETHUSD", "SOLUSD", "XRPUSD",               // crypto (USD pairs)
+  "EURUSD", "GBPUSD",                                     // forex (USD denominated)
+]);
+
+export function getCurrencySign(symbol: string): string {
+  if (USD_SYMBOLS.has(symbol)) return "$";
+  return "₹";
+}
+
 // Chart interval configuration
->>>>>>> Stashed changes
 export const CHART_INTERVALS = [
   { label: "1m",  value: "1m",  range: "1d" },
   { label: "5m",  value: "5m",  range: "1d" },

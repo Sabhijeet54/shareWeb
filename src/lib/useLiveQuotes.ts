@@ -69,7 +69,7 @@ function mapResult(raw: RawYahooResult, appSymbol: string): LiveQuote {
 // Fetches live quotes for a list of app symbols, auto-refreshing every `refreshMs`
 export function useLiveQuotes(
   symbols: string[],
-  refreshMs = 2500,
+  refreshMs = 1500,
 ): Record<string, LiveQuote> {
   const [quotes, setQuotes] = useState<Record<string, LiveQuote>>(() => {
     const init: Record<string, LiveQuote> = {};
@@ -107,11 +107,7 @@ export function useLiveQuotes(
     ].join(",");
 
     try {
-<<<<<<< Updated upstream
-      const res = await fetch(`/api/quote?symbols=${encodeURIComponent(yahooSymbols)}`);
-=======
-      const res = await fetch(`/api/quote?symbols=${encodeURIComponent(finnhubSymbols)}&_t=${Date.now()}`, { cache: "no-store" });
->>>>>>> Stashed changes
+      const res = await fetch(`/api/quote?symbols=${encodeURIComponent(yahooSymbols)}&_t=${Date.now()}`, { cache: "no-store" });
       if (!res.ok) throw new Error("fetch failed");
 
       const data = await res.json();
@@ -161,7 +157,7 @@ export function useLiveQuotes(
 }
 
 // Single-symbol hook — wraps useLiveQuotes
-export function useLiveSingleQuote(symbol: string, refreshMs = 2500) {
+export function useLiveSingleQuote(symbol: string, refreshMs = 1500) {
   const quotes = useLiveQuotes([symbol], refreshMs);
   return quotes[symbol];
 }

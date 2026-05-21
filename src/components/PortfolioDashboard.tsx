@@ -10,18 +10,10 @@ import { useLiveQuotes } from "@/lib/useLiveQuotes";
 import { YAHOO_SYMBOL_MAP } from "@/lib/symbolMap";
 import { watchlists } from "@/lib/marketData";
 
-<<<<<<< Updated upstream
-const SECTOR_MAP: Record<string, string> = {
-  RELIANCE: "Oil & Gas", TCS: "IT", HDFCBANK: "Banking", INFY: "IT",
-  ICICIBANK: "Banking", SBIN: "Banking", LT: "Infra", TATAMOTORS: "Auto",
-  WIPRO: "IT", AXISBANK: "Banking", MARUTI: "Auto", SUNPHARMA: "Pharma",
-};
-=======
 const SECTOR_MAP: Record<string, string> = watchlists.stocks.reduce<Record<string, string>>((acc, instrument) => {
   acc[instrument.symbol] = instrument.sector ?? "Other";
   return acc;
 }, {});
->>>>>>> Stashed changes
 
 export function PortfolioDashboard({ balance }: { balance: number }) {
   const { user } = useAuth();
@@ -76,13 +68,8 @@ export function PortfolioDashboard({ balance }: { balance: number }) {
     return realised;
   }, [trades]);
 
-<<<<<<< Updated upstream
   const openSymbols = positions.map((p) => p.symbol).filter((s) => s in YAHOO_SYMBOL_MAP);
-  const quotes = useLiveQuotes(openSymbols, 10000);
-=======
-  const openSymbols = positions.map((p) => p.symbol).filter((s) => s in FINNHUB_SYMBOL_MAP);
-  const quotes = useLiveQuotes(openSymbols, 2500);
->>>>>>> Stashed changes
+  const quotes = useLiveQuotes(openSymbols, 1500);
 
   const enriched = positions.map((pos) => {
     const q = quotes[pos.symbol];
