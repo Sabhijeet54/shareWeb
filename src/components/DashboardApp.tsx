@@ -75,7 +75,7 @@ function MoreDrawer({ onChange, onClose }: { onChange: (t: TabKey) => void; onCl
 export function DashboardApp() {
   const { profile, logout, isAdmin } = useAuth();
   const [activeTab, setActiveTab] = useState<TabKey>("home");
-  const [chartSymbol, setChartSymbol] = useState("RELIANCE");
+  const [chartSymbol, setChartSymbol] = useState("AAPL");
   const [showMore, setShowMore] = useState(false);
   const balance = profile?.walletBalance ?? 0;
 

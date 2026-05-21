@@ -7,12 +7,10 @@ import { sectorData, watchlists } from "@/lib/marketData";
 
 // All key symbols we want on the dashboard
 const EQUITY_SYMBOLS = [
-  "RELIANCE", "TCS", "HDFCBANK", "INFY", "ICICIBANK",
-  "SBIN", "LT", "TATAMOTORS", "WIPRO", "AXISBANK",
-  "MARUTI", "SUNPHARMA",
+  "AAPL", "MSFT", "NVDA", "TSLA", "AMD", "META",
 ];
 
-const INDEX_SYMBOLS = ["NIFTY", "SENSEX", "BANKNIFTY", "FINNIFTY", "INDIAVIX"];
+const INDEX_SYMBOLS: string[] = [];
 const DASHBOARD_SYMBOLS = [...INDEX_SYMBOLS, ...EQUITY_SYMBOLS];
 
 // Static fallback from marketData — always available even if API fails
@@ -121,8 +119,8 @@ export function DashboardHome({
     : 0;
   const dayPnlPct = balance > 0 ? (dayPnl / balance) * 100 : 0;
 
-  const niftyQ = quotes["NIFTY"];
-  const vixQ = quotes["INDIAVIX"];
+  const aaplQ = quotes["AAPL"];
+  const nvdaQ = quotes["NVDA"];
 
   return (
     <div className="space-y-5">
@@ -138,17 +136,18 @@ export function DashboardHome({
           <FiClock size={11} />
           <span>{time} IST</span>
         </div>
-        <span className="text-xs text-slate-500">NSE · BSE · {anyLiveLoaded ? "Live ●" : "Static"}</span>
+        <span className="text-xs text-slate-500">US Equities · {anyLiveLoaded ? "Live ●" : "Static"}</span>
       </div>
 
-      {/* Key indices */}
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
+      {/* Key symbols */}
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-6">
         {[
-          { symbol: "NIFTY", label: "NIFTY 50", fallback: 22480 },
-          { symbol: "SENSEX", label: "SENSEX", fallback: 74020 },
-          { symbol: "BANKNIFTY", label: "BANKNIFTY", fallback: 48260 },
-          { symbol: "FINNIFTY", label: "FINNIFTY", fallback: 21440 },
-          { symbol: "INDIAVIX", label: "INDIA VIX", fallback: 14.8 },
+          { symbol: "AAPL", label: "APPLE", fallback: 300 },
+          { symbol: "MSFT", label: "MICROSOFT", fallback: 520 },
+          { symbol: "NVDA", label: "NVIDIA", fallback: 180 },
+          { symbol: "TSLA", label: "TESLA", fallback: 430 },
+          { symbol: "AMD", label: "AMD", fallback: 160 },
+          { symbol: "META", label: "META", fallback: 640 },
         ].map(({ symbol, label, fallback }) => {
           const q = quotes[symbol];
           const price = (q && !q.isLoading && q.price > 0) ? q.price : fallback;
@@ -190,15 +189,15 @@ export function DashboardHome({
             </p>
           </div>
           <div>
-            <p className="text-xs text-slate-500">NIFTY 50</p>
-            <p className={`mt-1 text-lg font-bold ${(niftyQ?.changePct ?? 0) >= 0 ? "text-emerald-300" : "text-red-300"}`}>
-              {niftyQ?.isLoading ? "—" : `${(niftyQ?.changePct ?? 0) >= 0 ? "+" : ""}${(niftyQ?.changePct ?? 0).toFixed(2)}%`}
+            <p className="text-xs text-slate-500">AAPL</p>
+            <p className={`mt-1 text-lg font-bold ${(aaplQ?.changePct ?? 0) >= 0 ? "text-emerald-300" : "text-red-300"}`}>
+              {aaplQ?.isLoading ? "—" : `${(aaplQ?.changePct ?? 0) >= 0 ? "+" : ""}${(aaplQ?.changePct ?? 0).toFixed(2)}%`}
             </p>
           </div>
           <div>
-            <p className="text-xs text-slate-500">INDIA VIX</p>
+            <p className="text-xs text-slate-500">NVDA</p>
             <p className="mt-1 text-lg font-bold text-amber-300">
-              {vixQ?.isLoading ? "—" : (vixQ?.price ?? 14.8).toFixed(2)}
+              {nvdaQ?.isLoading ? "—" : (nvdaQ?.price ?? 180).toFixed(2)}
             </p>
           </div>
         </div>

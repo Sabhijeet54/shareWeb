@@ -2,35 +2,12 @@
 // Finnhub is used for live quotes, chart candles, metrics, and search.
 
 export const YAHOO_SYMBOL_MAP: Record<string, string> = {
-  // Indices
-  NIFTY: "^NSEI",
-  SENSEX: "^BSESN",
-  BANKNIFTY: "^NSEBANK",
-  FINNIFTY: "NIFTY_FIN_SERVICE.NS",
-  MIDCPNIFTY: "^CNXMIDCAP",
-  INDIAVIX: "^INDIAVIX",
-
-  // Large-cap NSE stocks
-  RELIANCE: "RELIANCE.NS",
-  TCS: "TCS.NS",
-  HDFCBANK: "HDFCBANK.NS",
-  INFY: "INFY.NS",
-  ICICIBANK: "ICICIBANK.NS",
-  SBIN: "SBIN.NS",
-  LT: "LT.NS",
-  TATAMOTORS: "TATAMOTORS.NS",
-  WIPRO: "WIPRO.NS",
-  AXISBANK: "AXISBANK.NS",
-  MARUTI: "MARUTI.NS",
-  SUNPHARMA: "SUNPHARMA.NS",
-  ADANIPORTS: "ADANIPORTS.NS",
-  BAJFINANCE: "BAJFINANCE.NS",
-  KOTAKBANK: "KOTAKBANK.NS",
-  HINDUNILVR: "HINDUNILVR.NS",
-  TITAN: "TITAN.NS",
-  NESTLEIND: "NESTLEIND.NS",
-  ULTRACEMCO: "ULTRACEMCO.NS",
-  POWERGRID: "POWERGRID.NS",
+  AAPL: "AAPL",
+  MSFT: "MSFT",
+  NVDA: "NVDA",
+  TSLA: "TSLA",
+  AMD: "AMD",
+  META: "META",
 
   // Commodities (international proxies via Yahoo)
   GOLD: "GC=F",
@@ -46,35 +23,13 @@ export const YAHOO_SYMBOL_MAP: Record<string, string> = {
 };
 
 export const FINNHUB_SYMBOL_MAP: Record<string, string> = {
-  // Indices
-  NIFTY: "^NSEI",
-  SENSEX: "^BSESN",
-  BANKNIFTY: "^NSEBANK",
-  FINNIFTY: "NIFTY_FIN_SERVICE.NS",
-  MIDCPNIFTY: "^CNXMIDCAP",
-  INDIAVIX: "^INDIAVIX",
-
-  // Large-cap NSE stocks
-  RELIANCE: "RELIANCE.NS",
-  TCS: "TCS.NS",
-  HDFCBANK: "HDFCBANK.NS",
-  INFY: "INFY.NS",
-  ICICIBANK: "ICICIBANK.NS",
-  SBIN: "SBIN.NS",
-  LT: "LT.NS",
-  TATAMOTORS: "TATAMOTORS.NS",
-  WIPRO: "WIPRO.NS",
-  AXISBANK: "AXISBANK.NS",
-  MARUTI: "MARUTI.NS",
-  SUNPHARMA: "SUNPHARMA.NS",
-  ADANIPORTS: "ADANIPORTS.NS",
-  BAJFINANCE: "BAJFINANCE.NS",
-  KOTAKBANK: "KOTAKBANK.NS",
-  HINDUNILVR: "HINDUNILVR.NS",
-  TITAN: "TITAN.NS",
-  NESTLEIND: "NESTLEIND.NS",
-  ULTRACEMCO: "ULTRACEMCO.NS",
-  POWERGRID: "POWERGRID.NS",
+  // Free-tier US stocks
+  AAPL: "AAPL",
+  MSFT: "MSFT",
+  NVDA: "NVDA",
+  TSLA: "TSLA",
+  AMD: "AMD",
+  META: "META",
 
   // Commodities / crypto provider symbols. Support depends on the Finnhub plan.
   GOLD: "OANDA:XAU_USD",
@@ -89,10 +44,12 @@ export const FINNHUB_SYMBOL_MAP: Record<string, string> = {
 
 // Reverse map for display
 export const DISPLAY_NAME_MAP: Record<string, string> = {
-  "^NSEI": "NIFTY 50",
-  "^BSESN": "SENSEX",
-  "^NSEBANK": "BANKNIFTY",
-  "^INDIAVIX": "INDIA VIX",
+  AAPL: "APPLE",
+  MSFT: "MICROSOFT",
+  NVDA: "NVIDIA",
+  TSLA: "TESLA",
+  AMD: "AMD",
+  META: "META",
   "GC=F": "GOLD",
   "SI=F": "SILVER",
   "CL=F": "CRUDE OIL",

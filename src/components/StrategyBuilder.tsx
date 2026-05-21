@@ -44,9 +44,12 @@ const STRATEGIES = {
 };
 
 const UNDERLYINGS = [
-  { symbol: "NIFTY", lotSize: 75, fallback: 22480 },
-  { symbol: "BANKNIFTY", lotSize: 30, fallback: 48260 },
-  { symbol: "FINNIFTY", lotSize: 60, fallback: 21440 },
+  { symbol: "AAPL", lotSize: 100, fallback: 300 },
+  { symbol: "MSFT", lotSize: 100, fallback: 520 },
+  { symbol: "NVDA", lotSize: 100, fallback: 180 },
+  { symbol: "TSLA", lotSize: 100, fallback: 430 },
+  { symbol: "AMD", lotSize: 100, fallback: 160 },
+  { symbol: "META", lotSize: 100, fallback: 640 },
 ];
 
 function calcPayoff(legs: Leg[], spotAtExpiry: number): number {

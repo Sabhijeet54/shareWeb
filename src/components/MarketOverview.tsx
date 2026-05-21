@@ -18,7 +18,7 @@ const DIRECT_SYMBOLS = Object.keys(FINNHUB_SYMBOL_MAP);
 const allInstruments: Instrument[] = Object.values(watchlists).flat();
 
 // Symbols needed to derive F&O prices
-const SPOT_SYMBOLS_FOR_FO = ["NIFTY", "BANKNIFTY", "FINNIFTY", "MIDCPNIFTY", "RELIANCE", "TCS", "HDFCBANK", "SBIN", "INFY"];
+const SPOT_SYMBOLS_FOR_FO = ["AAPL", "MSFT", "NVDA", "TSLA", "AMD", "META"];
 
 type SortKey = "default" | "price_asc" | "price_desc" | "change_asc" | "change_desc";
 
@@ -62,8 +62,8 @@ function useCombinedQuotes(tabSymbols: string[]) {
 }
 
 export function MarketOverview({ balance }: { balance: number }) {
-  const [activeTab, setActiveTab] = useState<WatchlistKey>("indices");
-  const [selected, setSelected] = useState<Instrument>(watchlists.indices[0]);
+  const [activeTab, setActiveTab] = useState<WatchlistKey>("stocks");
+  const [selected, setSelected] = useState<Instrument>(watchlists.stocks[0]);
   const [searchValue, setSearchValue] = useState("");
   const [sortKey, setSortKey] = useState<SortKey>("default");
   const [alertSymbol, setAlertSymbol] = useState<string | null>(null);

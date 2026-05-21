@@ -28,15 +28,17 @@ export function FundsPage({ balance }: { balance: number }) {
   const [withdrawLoading, setWithdrawLoading] = useState(false);
 
   // Margin calc
-  const [marginSymbol, setMarginSymbol] = useState("NIFTY");
+  const [marginSymbol, setMarginSymbol] = useState("AAPL");
   const [marginLots, setMarginLots] = useState("1");
   const MARGIN_RATES: Record<string, { lotSize: number; span: number; exposure: number }> = {
-    NIFTY: { lotSize: 75, span: 42000, exposure: 21000 },
-    BANKNIFTY: { lotSize: 30, span: 34000, exposure: 17000 },
-    RELIANCE: { lotSize: 250, span: 28000, exposure: 14000 },
-    SBIN: { lotSize: 1500, span: 8000, exposure: 4000 },
+    AAPL: { lotSize: 100, span: 15000, exposure: 7500 },
+    MSFT: { lotSize: 100, span: 18000, exposure: 9000 },
+    NVDA: { lotSize: 100, span: 22000, exposure: 11000 },
+    TSLA: { lotSize: 100, span: 24000, exposure: 12000 },
+    AMD: { lotSize: 100, span: 12000, exposure: 6000 },
+    META: { lotSize: 100, span: 17000, exposure: 8500 },
   };
-  const marginInfo = MARGIN_RATES[marginSymbol] ?? MARGIN_RATES.NIFTY;
+  const marginInfo = MARGIN_RATES[marginSymbol] ?? MARGIN_RATES.AAPL;
   const totalMargin = (marginInfo.span + marginInfo.exposure) * Number(marginLots || 1);
 
   // Ledger

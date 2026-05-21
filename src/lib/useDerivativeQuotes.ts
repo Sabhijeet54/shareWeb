@@ -72,15 +72,12 @@ export function useDerivativeQuotes(
 
     // ── Futures: F = S * e^(r * T) ──────────────────────────────────────────
     const futureMap: Array<[string, string]> = [
-      ["NIFTY FUT", "NIFTY"],
-      ["BANKNIFTY FUT", "BANKNIFTY"],
-      ["FINNIFTY FUT", "FINNIFTY"],
-      ["MIDCPNIFTY FUT", "MIDCPNIFTY"],
-      ["RELIANCE FUT", "RELIANCE"],
-      ["TCS FUT", "TCS"],
-      ["HDFCBANK FUT", "HDFCBANK"],
-      ["SBIN FUT", "SBIN"],
-      ["INFY FUT", "INFY"],
+      ["AAPL FUT", "AAPL"],
+      ["MSFT FUT", "MSFT"],
+      ["NVDA FUT", "NVDA"],
+      ["TSLA FUT", "TSLA"],
+      ["AMD FUT", "AMD"],
+      ["META FUT", "META"],
     ];
 
     for (const [futSym, spotSym] of futureMap) {
@@ -99,17 +96,12 @@ export function useDerivativeQuotes(
     // ── ATM Options using Black-Scholes ────────────────────────────────────
     type OptDef = [string, string, "CE" | "PE"];
     const optionMap: OptDef[] = [
-      ["NIFTY CE ATM",       "NIFTY",      "CE"],
-      ["NIFTY PE ATM",       "NIFTY",      "PE"],
-      ["BANKNIFTY CE ATM",   "BANKNIFTY",  "CE"],
-      ["BANKNIFTY PE ATM",   "BANKNIFTY",  "PE"],
-      ["FINNIFTY CE ATM",    "FINNIFTY",   "CE"],
-      ["MIDCPNIFTY PE ATM",  "MIDCPNIFTY", "PE"],
-      ["RELIANCE CE ATM",    "RELIANCE",   "CE"],
-      ["RELIANCE PE ATM",    "RELIANCE",   "PE"],
-      ["TCS CE ATM",         "TCS",        "CE"],
-      ["SBIN CE ATM",        "SBIN",       "CE"],
-      ["HDFCBANK PE ATM",    "HDFCBANK",   "PE"],
+      ["AAPL CE ATM",        "AAPL",       "CE"],
+      ["AAPL PE ATM",        "AAPL",       "PE"],
+      ["MSFT CE ATM",        "MSFT",       "CE"],
+      ["NVDA CE ATM",        "NVDA",       "CE"],
+      ["TSLA PE ATM",        "TSLA",       "PE"],
+      ["META CE ATM",        "META",       "CE"],
     ];
 
     for (const [optSym, spotSym, type] of optionMap) {

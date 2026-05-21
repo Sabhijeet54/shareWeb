@@ -5,10 +5,12 @@ import { generateOptionsChain } from "@/lib/marketData";
 import { useLiveSingleQuote } from "@/lib/useLiveQuotes";
 
 const UNDERLYINGS = [
-  { label: "NIFTY", symbol: "NIFTY", spotFallback: 22480 },
-  { label: "BANKNIFTY", symbol: "BANKNIFTY", spotFallback: 48260 },
-  { label: "FINNIFTY", symbol: "FINNIFTY", spotFallback: 21440 },
-  { label: "MIDCPNIFTY", symbol: "MIDCPNIFTY", spotFallback: 10880 },
+  { label: "AAPL", symbol: "AAPL", spotFallback: 300 },
+  { label: "MSFT", symbol: "MSFT", spotFallback: 520 },
+  { label: "NVDA", symbol: "NVDA", spotFallback: 180 },
+  { label: "TSLA", symbol: "TSLA", spotFallback: 430 },
+  { label: "AMD", symbol: "AMD", spotFallback: 160 },
+  { label: "META", symbol: "META", spotFallback: 640 },
 ];
 
 const EXPIRIES = ["29 May 2025", "05 Jun 2025", "26 Jun 2025", "31 Jul 2025"];

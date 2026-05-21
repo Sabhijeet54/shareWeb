@@ -1,4 +1,4 @@
-// GET /api/quote?symbols=RELIANCE.NS,TCS.NS,AAPL
+// GET /api/quote?symbols=AAPL,MSFT,NVDA
 // Proxies Finnhub quote + metric data and normalizes it to the app quote shape.
 
 import { NextRequest, NextResponse } from "next/server";
@@ -67,8 +67,6 @@ async function fetchJson<T>(
       headers: { Accept: "application/json" },
       cache: "no-store",
     });
-
-    console.log("FETCH JSON: ", url, res);
 
     if (!res.ok) return null;
     return (await res.json()) as T;

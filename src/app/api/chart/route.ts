@@ -1,4 +1,4 @@
-// GET /api/chart?symbol=RELIANCE.NS&interval=5m&range=1d
+// GET /api/chart?symbol=AAPL&interval=5m&range=1d
 // Proxies Finnhub stock candles and normalizes them to the chart shape used by the app.
 
 import { NextRequest, NextResponse } from "next/server";

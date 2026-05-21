@@ -11,9 +11,12 @@ import { FINNHUB_SYMBOL_MAP } from "@/lib/symbolMap";
 import { watchlists } from "@/lib/marketData";
 
 const SECTOR_MAP: Record<string, string> = {
-  RELIANCE: "Oil & Gas", TCS: "IT", HDFCBANK: "Banking", INFY: "IT",
-  ICICIBANK: "Banking", SBIN: "Banking", LT: "Infra", TATAMOTORS: "Auto",
-  WIPRO: "IT", AXISBANK: "Banking", MARUTI: "Auto", SUNPHARMA: "Pharma",
+  AAPL: "Technology",
+  MSFT: "Technology",
+  NVDA: "Semiconductors",
+  TSLA: "Auto",
+  AMD: "Semiconductors",
+  META: "Communication",
 };
 
 export function PortfolioDashboard({ balance }: { balance: number }) {
