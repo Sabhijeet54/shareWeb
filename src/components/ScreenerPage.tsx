@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import { FiFilter, FiStar } from "react-icons/fi";
 import { watchlists } from "@/lib/marketData";
 import { useLiveQuotes } from "@/lib/useLiveQuotes";
-import { YAHOO_SYMBOL_MAP } from "@/lib/symbolMap";
+import { SYMBOL_MAP } from "@/lib/symbolMap";
 
 const equities = watchlists.stocks;
 const sectors = ["All", ...new Set(equities.map((i) => i.sector).filter(Boolean) as string[])];
@@ -25,7 +25,7 @@ export function ScreenerPage({ onSelectSymbol }: { onSelectSymbol?: (s: string) 
   const [prebuilt, setPrebuilt] = useState<string | null>(null);
   const [saved, setSaved] = useState<string[]>([]);
 
-  const symbols = equities.map((i) => i.symbol).filter((s) => s in YAHOO_SYMBOL_MAP);
+  const symbols = equities.map((i) => i.symbol).filter((s) => s in SYMBOL_MAP);
   const quotes = useLiveQuotes(symbols, 30000);
 
   const filtered = useMemo(() => {

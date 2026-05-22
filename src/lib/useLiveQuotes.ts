@@ -1,11 +1,17 @@
+// ─── Live Quotes Hook (SSE) ──────────────────────────────────────────────────
+// Streams live market quotes via Server-Sent Events instead of polling.
+// Server pushes updates every ~5s from the DataPump singleton.
+//
+// Architecture:
+//   useLiveQuotes → EventSource('/api/stream') → DataPump → NSE (1 call)
+//   No more setInterval / repeated HTTP requests.
+// ─────────────────────────────────────────────────────────────────────────────
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
-import { toYahoo } from "@/lib/symbolMap";
+import { useEffect, useRef, useState } from "react";
 
 export type LiveQuote = {
   symbol: string;
-  yahooSymbol: string;
   name: string;
   price: number;
   change: number;       // absolute ₹ change
@@ -24,10 +30,10 @@ export type LiveQuote = {
   isError: boolean;
 };
 
-type RawYahooResult = {
+// Shape of NormalizedQuote sent from server via SSE
+type ServerQuote = {
   symbol: string;
   shortName?: string;
-  longName?: string;
   regularMarketPrice?: number;
   regularMarketChange?: number;
   regularMarketChangePercent?: number;
@@ -43,11 +49,10 @@ type RawYahooResult = {
   epsTrailingTwelveMonths?: number;
 };
 
-function mapResult(raw: RawYahooResult, appSymbol: string): LiveQuote {
+function mapQuote(raw: ServerQuote, sym: string): LiveQuote {
   return {
-    symbol: appSymbol,
-    yahooSymbol: raw.symbol,
-    name: raw.shortName ?? raw.longName ?? appSymbol,
+    symbol: sym,
+    name: raw.shortName ?? sym,
     price: raw.regularMarketPrice ?? 0,
     change: raw.regularMarketChange ?? 0,
     changePct: raw.regularMarketChangePercent ?? 0,
@@ -66,98 +71,101 @@ function mapResult(raw: RawYahooResult, appSymbol: string): LiveQuote {
   };
 }
 
-// Fetches live quotes for a list of app symbols, auto-refreshing every `refreshMs`
+function makeDefault(sym: string): LiveQuote {
+  return {
+    symbol: sym,
+    name: sym,
+    price: 0,
+    change: 0,
+    changePct: 0,
+    volume: 0,
+    high: 0,
+    low: 0,
+    open: 0,
+    prevClose: 0,
+    weekHigh52: 0,
+    weekLow52: 0,
+    isLoading: true,
+    isError: false,
+  };
+}
+
+/**
+ * Streams live quotes via SSE — no repeated HTTP polling.
+ * Server pushes updates every ~5s from the centralized DataPump.
+ *
+ * @param symbols  App symbols to subscribe to (e.g. ['RELIANCE', 'TCS'])
+ * @param _refreshMs  Ignored — kept for API compatibility. Server controls the interval.
+ */
 export function useLiveQuotes(
   symbols: string[],
-  refreshMs = 1500,
+  _refreshMs?: number,
 ): Record<string, LiveQuote> {
   const [quotes, setQuotes] = useState<Record<string, LiveQuote>>(() => {
     const init: Record<string, LiveQuote> = {};
-    for (const sym of symbols) {
-      init[sym] = {
-        symbol: sym,
-        yahooSymbol: toYahoo(sym),
-        name: sym,
-        price: 0,
-        change: 0,
-        changePct: 0,
-        volume: 0,
-        high: 0,
-        low: 0,
-        open: 0,
-        prevClose: 0,
-        weekHigh52: 0,
-        weekLow52: 0,
-        isLoading: true,
-        isError: false,
-      };
-    }
+    for (const sym of symbols) init[sym] = makeDefault(sym);
     return init;
   });
 
+  // Stable dependency: sorted, deduped symbol list
+  const symbolsKey = [...new Set(symbols)].sort().join(",");
   const symbolsRef = useRef(symbols);
   symbolsRef.current = symbols;
 
-  const fetchQuotes = useCallback(async () => {
-    if (symbolsRef.current.length === 0) return;
+  useEffect(() => {
+    const uniqueSymbols = [...new Set(symbolsRef.current)];
+    if (uniqueSymbols.length === 0) return;
 
-    // Build yahoo symbol string, deduplicated
-    const yahooSymbols = [
-      ...new Set(symbolsRef.current.map((s) => toYahoo(s))),
-    ].join(",");
+    // Reset to loading when symbols change
+    setQuotes(() => {
+      const init: Record<string, LiveQuote> = {};
+      for (const sym of uniqueSymbols) init[sym] = makeDefault(sym);
+      return init;
+    });
 
-    try {
-      const res = await fetch(`/api/quote?symbols=${encodeURIComponent(yahooSymbols)}&_t=${Date.now()}`, { cache: "no-store" });
-      if (!res.ok) throw new Error("fetch failed");
+    // Open SSE connection to /api/stream
+    const es = new EventSource(
+      `/api/stream?symbols=${encodeURIComponent(uniqueSymbols.join(","))}`,
+    );
 
-      const data = await res.json();
-      const results: RawYahooResult[] =
-        data?.quoteResponse?.result ?? data?.result ?? [];
-
-      if (results.length === 0) throw new Error("no results");
-
-      // Build a map from yahoo symbol → raw result
-      const byYahoo: Record<string, RawYahooResult> = {};
-      for (const r of results) {
-        byYahoo[r.symbol] = r;
+    es.onmessage = (event) => {
+      try {
+        const data: Record<string, ServerQuote> = JSON.parse(event.data);
+        setQuotes((prev) => {
+          const next = { ...prev };
+          for (const [sym, raw] of Object.entries(data)) {
+            next[sym] = mapQuote(raw, sym);
+          }
+          return next;
+        });
+      } catch {
+        // parse error — ignore
       }
+    };
 
+    es.onerror = () => {
+      // EventSource auto-reconnects on error.
+      // Only mark error if we never received data (still loading).
       setQuotes((prev) => {
         const next = { ...prev };
-        for (const appSym of symbolsRef.current) {
-          const yahooSym = toYahoo(appSym);
-          const raw = byYahoo[yahooSym];
-          if (raw) {
-            next[appSym] = mapResult(raw, appSym);
-          } else {
-            // Keep previous price but mark stale
-            next[appSym] = { ...prev[appSym], isLoading: false, isError: false };
+        for (const sym of uniqueSymbols) {
+          if (next[sym]?.isLoading) {
+            next[sym] = { ...next[sym], isLoading: false, isError: true };
           }
         }
         return next;
       });
-    } catch {
-      setQuotes((prev) => {
-        const next = { ...prev };
-        for (const sym of symbolsRef.current) {
-          next[sym] = { ...prev[sym], isLoading: false, isError: prev[sym].price === 0 };
-        }
-        return next;
-      });
-    }
-  }, []);
+    };
 
-  useEffect(() => {
-    fetchQuotes();
-    const id = setInterval(fetchQuotes, refreshMs);
-    return () => clearInterval(id);
-  }, [fetchQuotes, refreshMs]);
+    return () => es.close();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [symbolsKey]);
 
   return quotes;
 }
 
-// Single-symbol hook — wraps useLiveQuotes
-export function useLiveSingleQuote(symbol: string, refreshMs = 1500) {
-  const quotes = useLiveQuotes([symbol], refreshMs);
+/** Single-symbol convenience wrapper — connects to the same SSE stream. */
+export function useLiveSingleQuote(symbol: string, _refreshMs?: number) {
+  const quotes = useLiveQuotes([symbol]);
   return quotes[symbol];
 }

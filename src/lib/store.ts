@@ -49,7 +49,7 @@ export const useAppStore = create<AppStore>()(
       setTheme: (t) => set({ theme: t }),
 
       // ── Custom Watchlist ──
-      customWatchlist: ["RELIANCE", "TCS", "HDFCBANK", "INFY", "ICICIBANK"],
+      customWatchlist: [] as string[],
       addToWatchlist: (symbol) =>
         set((s) => ({
           customWatchlist: s.customWatchlist.includes(symbol)

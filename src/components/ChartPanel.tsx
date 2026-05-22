@@ -142,7 +142,7 @@ export function ChartPanel({ symbol, onBack }: { symbol: string; onBack?: () => 
   const [fullscreen, setFullscreen] = useState(false);
 
   const { bars, isLoading, isError } = useChartData(symbol, interval.value, interval.range);
-  const liveQuote = useLiveSingleQuote(symbol, 1500);
+  const liveQuote = useLiveSingleQuote(symbol, 3000);
 
   const containerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);

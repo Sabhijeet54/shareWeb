@@ -78,7 +78,13 @@ NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=your_sender_id
 NEXT_PUBLIC_FIREBASE_APP_ID=your_app_id
 NEXT_PUBLIC_ADMIN_EMAIL=admin@example.com
 NEXT_PUBLIC_ADMIN_UPI_ID=admin@upi
+UPSTOX_API_KEY=your_upstox_api_key
+UPSTOX_API_SECRET=your_upstox_api_secret
+UPSTOX_ACCESS_TOKEN=your_short_lived_access_token
+UPSTOX_REFRESH_TOKEN=your_refresh_token
 ```
+
+`UPSTOX_REFRESH_TOKEN` enables automatic access-token renewal at runtime (both REST and live stream auth retry paths).
 
 ## Firestore Collections
 

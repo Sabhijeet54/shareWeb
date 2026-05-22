@@ -69,7 +69,7 @@ export const watchlists: Record<WatchlistKey, Instrument[]> = {
     { symbol: "ADANIPORTS", title: "Adani Ports",          subtitle: "NSE", ...Z, sector: "Infra" },
 
     // ── Auto ──
-    { symbol: "TATAMOTORS", title: "Tata Motors",          subtitle: "NSE", ...Z, sector: "Auto" },
+    { symbol: "TMCV",       title: "Tata Motors CV",       subtitle: "NSE", ...Z, sector: "Auto" },
     { symbol: "MARUTI",     title: "Maruti Suzuki",        subtitle: "NSE", ...Z, sector: "Auto" },
     { symbol: "M&M",        title: "Mahindra & Mahindra",  subtitle: "NSE", ...Z, sector: "Auto" },
     { symbol: "EICHERMOT",  title: "Eicher Motors",        subtitle: "NSE", ...Z, sector: "Auto" },
@@ -111,7 +111,7 @@ export const watchlists: Record<WatchlistKey, Instrument[]> = {
     { symbol: "HAVELLS",    title: "Havells India",        subtitle: "NSE", ...Z, sector: "Consumer" },
 
     // ── New Age / Tech ──
-    { symbol: "ZOMATO",     title: "Zomato",               subtitle: "NSE", ...Z, sector: "Consumer Tech" },
+    { symbol: "ETERNAL",    title: "Eternal (Zomato)",     subtitle: "NSE", ...Z, sector: "Consumer Tech" },
     { symbol: "DMART",      title: "Avenue Supermarts",    subtitle: "NSE", ...Z, sector: "Retail" },
     { symbol: "IRCTC",      title: "IRCTC",                subtitle: "NSE", ...Z, sector: "Travel" },
     { symbol: "INDIGO",     title: "IndiGo",               subtitle: "NSE", ...Z, sector: "Aviation" },
@@ -128,7 +128,7 @@ export const watchlists: Record<WatchlistKey, Instrument[]> = {
     { symbol: "ICICIBANK FUT", title: "ICICIBANK FUT", subtitle: "Current month", ...Z },
     { symbol: "SBIN FUT",      title: "SBIN FUT",      subtitle: "Current month", ...Z },
     { symbol: "BAJFINANCE FUT",title: "BAJFINANCE FUT",subtitle: "Current month", ...Z },
-    { symbol: "TATAMOTORS FUT",title: "TATAMOTORS FUT",subtitle: "Current month", ...Z },
+    { symbol: "TMCV FUT",     title: "TMCV FUT",     subtitle: "Current month", ...Z },
     { symbol: "TATASTEEL FUT", title: "TATASTEEL FUT", subtitle: "Current month", ...Z },
     { symbol: "ITC FUT",       title: "ITC FUT",       subtitle: "Current month", ...Z },
   ],
@@ -212,7 +212,7 @@ export type ContractMeta = {
 // NSE F&O lot sizes (as of 2024-25, approximate)
 const NSE_LOT_SIZES: Record<string, number> = {
   RELIANCE: 250, TCS: 150, HDFCBANK: 550, INFY: 300, ICICIBANK: 700,
-  SBIN: 1500, BAJFINANCE: 125, TATAMOTORS: 1375, TATASTEEL: 5500,
+  SBIN: 1500, BAJFINANCE: 125, TMCV: 1375, TATASTEEL: 5500,
   ITC: 1600, HINDUNILVR: 300, MARUTI: 100, WIPRO: 1500, SUNPHARMA: 700,
   AXISBANK: 1200, KOTAKBANK: 400, LT: 150, BHARTIARTL: 950,
   ASIANPAINT: 300, TITAN: 175, ADANIENT: 250, HCLTECH: 350, TECHM: 600,
@@ -256,7 +256,7 @@ export const sectorData = [
   { name: "Banking",   change: 0, marketCap: "—", stocks: ["HDFCBANK","ICICIBANK","SBIN","KOTAKBANK","AXISBANK"] },
   { name: "IT",        change: 0, marketCap: "—", stocks: ["TCS","INFY","WIPRO","HCLTECH","TECHM"] },
   { name: "Oil & Gas", change: 0, marketCap: "—", stocks: ["RELIANCE","ONGC","BPCL"] },
-  { name: "Auto",      change: 0, marketCap: "—", stocks: ["TATAMOTORS","MARUTI","M&M","EICHERMOT"] },
+  { name: "Auto",      change: 0, marketCap: "—", stocks: ["TMCV","MARUTI","M&M","EICHERMOT"] },
   { name: "Pharma",    change: 0, marketCap: "—", stocks: ["SUNPHARMA","DRREDDY","CIPLA","DIVISLAB"] },
   { name: "FMCG",      change: 0, marketCap: "—", stocks: ["HINDUNILVR","ITC","NESTLEIND","BRITANNIA"] },
   { name: "Metals",    change: 0, marketCap: "—", stocks: ["TATASTEEL","JSWSTEEL","HINDALCO","VEDL"] },
@@ -267,67 +267,3 @@ export const sectorData = [
   { name: "Defence",   change: 0, marketCap: "—", stocks: ["HAL","BEL"] },
 ];
 
-// ─── Options chain (Black-Scholes based) ────────────────────────────────────
-export function generateOptionsChain(spotPrice: number, expiryLabel: string, ivPercent = 18) {
-  if (spotPrice <= 0) return [];
-  const strikes = [];
-  const step = spotPrice > 5000 ? 100 : spotPrice > 1000 ? 50 : spotPrice > 500 ? 25 : 10;
-  const atmStrike = Math.round(spotPrice / step) * step;
-  const sigma = ivPercent / 100;
-
-  const expDate = new Date(expiryLabel);
-  const now = new Date();
-  const T = Math.max(1, (expDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24 * 365));
-  const r = 0.065;
-
-  function normCDF(x: number): number {
-    const a1 = 0.254829592, a2 = -0.284496736, a3 = 1.421413741;
-    const a4 = -1.453152027, a5 = 1.061405429, p = 0.3275911;
-    const sign = x < 0 ? -1 : 1;
-    const t = 1 / (1 + p * Math.abs(x));
-    const poly = t * (a1 + t * (a2 + t * (a3 + t * (a4 + t * a5))));
-    return 0.5 * (1 + sign * (1 - poly * Math.exp(-x * x / 2)));
-  }
-
-  function blackScholes(S: number, K: number, T: number, r: number, sigma: number) {
-    if (T <= 0) return { ce: Math.max(0, S - K), pe: Math.max(0, K - S) };
-    const sqrtT = Math.sqrt(T);
-    const d1 = (Math.log(S / K) + (r + sigma * sigma / 2) * T) / (sigma * sqrtT);
-    const d2 = d1 - sigma * sqrtT;
-    const ce = S * normCDF(d1) - K * Math.exp(-r * T) * normCDF(d2);
-    const pe = K * Math.exp(-r * T) * normCDF(-d2) - S * normCDF(-d1);
-    return {
-      ce: Math.max(0.05, ce), pe: Math.max(0.05, pe),
-      delta_ce: normCDF(d1), delta_pe: normCDF(d1) - 1,
-      gamma: Math.exp(-d1 * d1 / 2) / (S * sigma * sqrtT * Math.sqrt(2 * Math.PI)),
-      theta_ce: -(S * sigma * Math.exp(-d1 * d1 / 2)) / (2 * sqrtT * Math.sqrt(2 * Math.PI)) - r * K * Math.exp(-r * T) * normCDF(d2),
-      vega: S * sqrtT * Math.exp(-d1 * d1 / 2) / Math.sqrt(2 * Math.PI),
-    };
-  }
-
-  for (let i = -10; i <= 10; i++) {
-    const strike = atmStrike + i * step;
-    const isATM = i === 0;
-    const smileSigma = sigma * (1 + 0.02 * Math.abs(i));
-    const bs = blackScholes(spotPrice, strike, T, r, smileSigma);
-    const oiBase = Math.round(Math.max(10, 80 - Math.abs(i) * 5));
-    strikes.push({
-      strike, expiry: expiryLabel, isATM,
-      ce: {
-        premium: parseFloat(bs.ce.toFixed(2)), iv: parseFloat((smileSigma * 100).toFixed(1)),
-        oi: oiBase + "L", oiChange: parseFloat((Math.random() * 10 - 5).toFixed(1)),
-        volume: Math.max(1, Math.round(oiBase * 0.15)) + "L",
-        delta: parseFloat((bs.delta_ce ?? 0.5).toFixed(3)), gamma: parseFloat((bs.gamma ?? 0.002).toFixed(4)),
-        theta: parseFloat(((bs.theta_ce ?? -15) / 365).toFixed(2)), vega: parseFloat(((bs.vega ?? 8) / 100).toFixed(2)),
-      },
-      pe: {
-        premium: parseFloat(bs.pe.toFixed(2)), iv: parseFloat((smileSigma * 100).toFixed(1)),
-        oi: Math.round(oiBase * 0.9) + "L", oiChange: parseFloat((Math.random() * 10 - 5).toFixed(1)),
-        volume: Math.max(1, Math.round(oiBase * 0.12)) + "L",
-        delta: parseFloat((bs.delta_pe ?? -0.5).toFixed(3)), gamma: parseFloat((bs.gamma ?? 0.002).toFixed(4)),
-        theta: parseFloat(((bs.theta_ce ?? -15) / 365).toFixed(2)), vega: parseFloat(((bs.vega ?? 8) / 100).toFixed(2)),
-      },
-    });
-  }
-  return strikes;
-}

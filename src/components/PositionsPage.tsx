@@ -7,7 +7,7 @@ import { useAuth } from "@/context/AuthContext";
 import { db } from "@/lib/firebase";
 import type { TradeOrder } from "@/types/app";
 import { useLiveQuotes } from "@/lib/useLiveQuotes";
-import { YAHOO_SYMBOL_MAP } from "@/lib/symbolMap";
+import { SYMBOL_MAP } from "@/lib/symbolMap";
 
 // Derive open positions from executed trades (BUY = open, SELL = closing)
 type DerivedPosition = {
@@ -95,8 +95,8 @@ export function PositionsPage() {
   const { open, closed } = usePositions(user?.uid ?? "");
   const squareOffAlert = useSquareOffAlert();
 
-  const openSymbols = open.map((p) => p.symbol).filter((s) => s in YAHOO_SYMBOL_MAP);
-  const quotes = useLiveQuotes(openSymbols, 1500);
+  const openSymbols = open.map((p) => p.symbol).filter((s) => s in SYMBOL_MAP);
+  const quotes = useLiveQuotes(openSymbols, 3000);
 
   const totalPnl = open.reduce((acc, pos) => {
     const cmp = quotes[pos.symbol]?.price ?? pos.avgPrice;

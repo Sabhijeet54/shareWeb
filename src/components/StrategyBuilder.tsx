@@ -59,7 +59,7 @@ export function StrategyBuilder() {
   const [selectedStrategy, setSelectedStrategy] = useState<keyof typeof STRATEGIES>("Long Straddle");
   const [legs, setLegs] = useState<Leg[]>([]);
 
-  const quote = useLiveSingleQuote(underlyingSymbol, 1500);
+  const quote = useLiveSingleQuote(underlyingSymbol, 3000);
   const spot = quote && !quote.isLoading && quote.price > 0 ? quote.price : 0;
   const lotSize = getContractMeta({
     symbol: `${underlyingSymbol} FUT`,

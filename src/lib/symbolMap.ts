@@ -1,127 +1,112 @@
-// ─── SYMBOL MAPPING: Internal → Provider ────────────────────────────────────
-// Primary: Yahoo Finance (NSE .NS, BSE .BO, commodities, forex, crypto)
-// Fallback: Finnhub (limited free-tier Indian support)
+// ─── SYMBOL MAPPING: Internal App Symbols ───────────────────────────────────
+// Maps internal symbols to their properties.
+// Provider: Upstox.
 
-export const YAHOO_SYMBOL_MAP: Record<string, string> = {
-  // ── NSE Indices ──
-  "NIFTY 50":     "^NSEI",
-  "SENSEX":       "^BSESN",
-  "BANK NIFTY":   "^NSEBANK",
-  "NIFTY IT":     "^CNXIT",
-  "NIFTY PHARMA": "^CNXPHARMA",
-  "NIFTY AUTO":   "^CNXAUTO",
-  "NIFTY METAL":  "^CNXMETAL",
-  "NIFTY REALTY":  "^CNXREALTY",
-  "NIFTY ENERGY": "^CNXENERGY",
-  "NIFTY FMCG":   "^CNXFMCG",
+/** All tradeable symbols recognized by the app. */
+export const SYMBOL_MAP: Record<string, string> = {
+  // ── Indices ──
+  "NIFTY 50":     "NIFTY",
+  "SENSEX":       "SENSEX",
+  "BANK NIFTY":   "BANKNIFTY",
+  "NIFTY IT":     "NIFTY IT",
+  "NIFTY PHARMA": "NIFTY PHARMA",
+  "NIFTY AUTO":   "NIFTY AUTO",
+  "NIFTY METAL":  "NIFTY METAL",
+  "NIFTY REALTY":  "NIFTY REALTY",
+  "NIFTY ENERGY": "NIFTY ENERGY",
+  "NIFTY FMCG":   "NIFTY FMCG",
 
-  // ── NSE Equities ──
-  RELIANCE:    "RELIANCE.NS",
-  TCS:         "TCS.NS",
-  HDFCBANK:    "HDFCBANK.NS",
-  INFY:        "INFY.NS",
-  ICICIBANK:   "ICICIBANK.NS",
-  HINDUNILVR:  "HINDUNILVR.NS",
-  SBIN:        "SBIN.NS",
-  BHARTIARTL:  "BHARTIARTL.NS",
-  ITC:         "ITC.NS",
-  KOTAKBANK:   "KOTAKBANK.NS",
-  LT:          "LT.NS",
-  AXISBANK:    "AXISBANK.NS",
-  ASIANPAINT:  "ASIANPAINT.NS",
-  MARUTI:      "MARUTI.NS",
-  TITAN:       "TITAN.NS",
-  SUNPHARMA:   "SUNPHARMA.NS",
-  BAJFINANCE:  "BAJFINANCE.NS",
-  WIPRO:       "WIPRO.NS",
-  HCLTECH:     "HCLTECH.NS",
-  ULTRACEMCO:  "ULTRACEMCO.NS",
-  TATAMOTORS:  "TATAMOTORS.NS",
-  TATASTEEL:   "TATASTEEL.NS",
-  NTPC:        "NTPC.NS",
-  POWERGRID:   "POWERGRID.NS",
-  ONGC:        "ONGC.NS",
-  JSWSTEEL:    "JSWSTEEL.NS",
-  ADANIENT:    "ADANIENT.NS",
-  ADANIPORTS:  "ADANIPORTS.NS",
-  BAJAJFINSV:  "BAJAJFINSV.NS",
-  TECHM:       "TECHM.NS",
-  NESTLEIND:   "NESTLEIND.NS",
-  "M&M":       "M%26M.NS",
-  HDFCLIFE:    "HDFCLIFE.NS",
-  DRREDDY:     "DRREDDY.NS",
-  DIVISLAB:    "DIVISLAB.NS",
-  APOLLOHOSP:  "APOLLOHOSP.NS",
-  HEROMOTOCO:  "HEROMOTOCO.NS",
-  CIPLA:       "CIPLA.NS",
-  TATACONSUM:  "TATACONSUM.NS",
-  EICHERMOT:   "EICHERMOT.NS",
-  SBILIFE:     "SBILIFE.NS",
-  BPCL:        "BPCL.NS",
-  BRITANNIA:   "BRITANNIA.NS",
-  GRASIM:      "GRASIM.NS",
-  COALINDIA:   "COALINDIA.NS",
-  HINDALCO:    "HINDALCO.NS",
-  INDUSINDBK:  "INDUSINDBK.NS",
-  VEDL:        "VEDL.NS",
-  ZOMATO:      "ZOMATO.NS",
-  IRCTC:       "IRCTC.NS",
-  TATAPOWER:   "TATAPOWER.NS",
-  DMART:       "DMART.NS",
-  PIDILITIND:  "PIDILITIND.NS",
-  HAVELLS:     "HAVELLS.NS",
-  DABUR:       "DABUR.NS",
-  BANKBARODA:  "BANKBARODA.NS",
-  PNB:         "PNB.NS",
-  INDIGO:      "INDIGO.NS",
-  HAL:         "HAL.NS",
-  BEL:         "BEL.NS",
+  // ── Equities ──
+  RELIANCE:    "RELIANCE",
+  TCS:         "TCS",
+  HDFCBANK:    "HDFCBANK",
+  INFY:        "INFY",
+  ICICIBANK:   "ICICIBANK",
+  HINDUNILVR:  "HINDUNILVR",
+  SBIN:        "SBIN",
+  BHARTIARTL:  "BHARTIARTL",
+  ITC:         "ITC",
+  KOTAKBANK:   "KOTAKBANK",
+  LT:          "LT",
+  AXISBANK:    "AXISBANK",
+  ASIANPAINT:  "ASIANPAINT",
+  MARUTI:      "MARUTI",
+  TITAN:       "TITAN",
+  SUNPHARMA:   "SUNPHARMA",
+  BAJFINANCE:  "BAJFINANCE",
+  WIPRO:       "WIPRO",
+  HCLTECH:     "HCLTECH",
+  ULTRACEMCO:  "ULTRACEMCO",
+  TMCV:        "TMCV",
+  TATASTEEL:   "TATASTEEL",
+  NTPC:        "NTPC",
+  POWERGRID:   "POWERGRID",
+  ONGC:        "ONGC",
+  JSWSTEEL:    "JSWSTEEL",
+  ADANIENT:    "ADANIENT",
+  ADANIPORTS:  "ADANIPORTS",
+  BAJAJFINSV:  "BAJAJFINSV",
+  TECHM:       "TECHM",
+  NESTLEIND:   "NESTLEIND",
+  "M&M":       "M&M",
+  HDFCLIFE:    "HDFCLIFE",
+  DRREDDY:     "DRREDDY",
+  DIVISLAB:    "DIVISLAB",
+  APOLLOHOSP:  "APOLLOHOSP",
+  HEROMOTOCO:  "HEROMOTOCO",
+  CIPLA:       "CIPLA",
+  TATACONSUM:  "TATACONSUM",
+  EICHERMOT:   "EICHERMOT",
+  SBILIFE:     "SBILIFE",
+  BPCL:        "BPCL",
+  BRITANNIA:   "BRITANNIA",
+  GRASIM:      "GRASIM",
+  COALINDIA:   "COALINDIA",
+  HINDALCO:    "HINDALCO",
+  INDUSINDBK:  "INDUSINDBK",
+  VEDL:        "VEDL",
+  ETERNAL:     "ETERNAL",
+  IRCTC:       "IRCTC",
+  TATAPOWER:   "TATAPOWER",
+  DMART:       "DMART",
+  PIDILITIND:  "PIDILITIND",
+  HAVELLS:     "HAVELLS",
+  DABUR:       "DABUR",
+  BANKBARODA:  "BANKBARODA",
+  PNB:         "PNB",
+  INDIGO:      "INDIGO",
+  HAL:         "HAL",
+  BEL:         "BEL",
 
-  // ── Commodities ──
-  GOLD:        "GC=F",
-  SILVER:      "SI=F",
-  CRUDEOIL:    "CL=F",
-  NATURALGAS:  "NG=F",
-  COPPER:      "HG=F",
+  // ── Commodities (MCX) ──
+  GOLD:        "GOLD",
+  SILVER:      "SILVER",
+  CRUDEOIL:    "CRUDEOIL",
+  NATURALGAS:  "NATURALGAS",
+  COPPER:      "COPPER",
 
   // ── Forex ──
-  USDINR:      "USDINR=X",
-  EURINR:      "EURINR=X",
-  GBPINR:      "GBPINR=X",
-  JPYINR:      "JPYINR=X",
-  EURUSD:      "EURUSD=X",
-  GBPUSD:      "GBPUSD=X",
+  USDINR:      "USDINR",
+  EURINR:      "EURINR",
+  GBPINR:      "GBPINR",
+  JPYINR:      "JPYINR",
+  EURUSD:      "EURUSD",
+  GBPUSD:      "GBPUSD",
 
   // ── Crypto ──
-  BTCINR:      "BTC-INR",
-  ETHINR:      "ETH-INR",
-  BTCUSD:      "BTC-USD",
-  ETHUSD:      "ETH-USD",
-  SOLUSD:      "SOL-USD",
-  XRPUSD:      "XRP-USD",
+  BTCINR:      "BTCINR",
+  ETHINR:      "ETHINR",
+  BTCUSD:      "BTCUSD",
+  ETHUSD:      "ETHUSD",
+  SOLUSD:      "SOLUSD",
+  XRPUSD:      "XRPUSD",
 };
 
-// Keep FINNHUB_SYMBOL_MAP for backward-compat (some components reference it)
-export const FINNHUB_SYMBOL_MAP: Record<string, string> = { ...YAHOO_SYMBOL_MAP };
-
-// Resolve internal symbol → Yahoo Finance symbol
-export function toYahoo(symbol: string): string {
-  if (YAHOO_SYMBOL_MAP[symbol]) return YAHOO_SYMBOL_MAP[symbol];
-  if (symbol.includes(".") || symbol.startsWith("^") || symbol.includes("=") || symbol.includes("-")) return symbol;
-  return symbol + ".NS";
-}
-
-// Alias for backward compat — routes & hooks call toFinnhub()
-export function toFinnhub(symbol: string): string {
-  return toYahoo(symbol);
-}
-
 // ─── Currency sign helper ────────────────────────────────────────────────────
-// Returns the correct currency symbol for display based on the instrument
 const USD_SYMBOLS = new Set([
-  "GOLD", "SILVER", "CRUDEOIL", "NATURALGAS", "COPPER",  // commodities
-  "BTCUSD", "ETHUSD", "SOLUSD", "XRPUSD",               // crypto (USD pairs)
-  "EURUSD", "GBPUSD",                                     // forex (USD denominated)
+  "GOLD", "SILVER", "CRUDEOIL", "NATURALGAS", "COPPER",
+  "BTCUSD", "ETHUSD", "SOLUSD", "XRPUSD",
+  "EURUSD", "GBPUSD",
 ]);
 
 export function getCurrencySign(symbol: string): string {

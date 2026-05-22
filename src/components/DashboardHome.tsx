@@ -43,7 +43,7 @@ export function DashboardHome({
   balance: number;
   onSelectSymbol?: (symbol: string) => void;
 }) {
-  const quotes = useLiveQuotes(DASHBOARD_SYMBOLS, 1500);
+  const quotes = useLiveQuotes(DASHBOARD_SYMBOLS, 3000);
   const { open, time } = useMarketClock();
 
   // Build enriched stock list from live quotes only
@@ -73,16 +73,21 @@ export function DashboardHome({
     });
   }, [quotes]);
 
+  const liveStocks = useMemo(
+    () => allStocks.filter((s) => s.isLive && Number.isFinite(s.changePct)),
+    [allStocks],
+  );
+
   // Top gainers — sorted by change%, always show top 5 even if all are positive or all negative
   const gainers = useMemo(
-    () => [...allStocks].sort((a, b) => b.changePct - a.changePct).slice(0, 5),
-    [allStocks],
+    () => [...liveStocks].sort((a, b) => b.changePct - a.changePct).slice(0, 5),
+    [liveStocks],
   );
 
   // Top losers — bottom 5
   const losers = useMemo(
-    () => [...allStocks].sort((a, b) => a.changePct - b.changePct).slice(0, 5),
-    [allStocks],
+    () => [...liveStocks].sort((a, b) => a.changePct - b.changePct).slice(0, 5),
+    [liveStocks],
   );
 
   // Most active — sort by volume (live), fall back to static order
@@ -210,6 +215,9 @@ export function DashboardHome({
             {!anyLiveLoaded && <span className="ml-auto text-[10px] font-normal text-[var(--text-muted)]">waiting for live</span>}
           </p>
           <div className="space-y-2">
+            {gainers.length === 0 && (
+              <p className="rounded-xl bg-[var(--background)]/80 px-3 py-2.5 text-xs text-[var(--text-muted)]">No live gainers available</p>
+            )}
             {gainers.map((s) => (
               <button key={s.symbol} type="button" onClick={() => onSelectSymbol?.(s.symbol)}
                 className="flex w-full items-center justify-between rounded-xl bg-[var(--background)]/80 px-3 py-2.5 text-left hover:bg-[var(--hover-bg)]">
@@ -235,6 +243,9 @@ export function DashboardHome({
             {!anyLiveLoaded && <span className="ml-auto text-[10px] font-normal text-[var(--text-muted)]">waiting for live</span>}
           </p>
           <div className="space-y-2">
+            {losers.length === 0 && (
+              <p className="rounded-xl bg-[var(--background)]/80 px-3 py-2.5 text-xs text-[var(--text-muted)]">No live losers available</p>
+            )}
             {losers.map((s) => (
               <button key={s.symbol} type="button" onClick={() => onSelectSymbol?.(s.symbol)}
                 className="flex w-full items-center justify-between rounded-xl bg-[var(--background)]/80 px-3 py-2.5 text-left hover:bg-[var(--hover-bg)]">

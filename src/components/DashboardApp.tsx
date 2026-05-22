@@ -91,12 +91,14 @@ export function DashboardApp() {
     return "home";
   });
   const [chartSymbol, setChartSymbol] = useState(() => {
-    if (typeof window !== "undefined") return sessionStorage.getItem("sw_chart") || equitySymbols[0] || "RELIANCE";
-    return equitySymbols[0] || "RELIANCE";
+    const fallback = equitySymbols[0] ?? "";
+    if (typeof window !== "undefined") return sessionStorage.getItem("sw_chart") || fallback;
+    return fallback;
   });
   const [profileSymbol, setProfileSymbol] = useState(() => {
-    if (typeof window !== "undefined") return sessionStorage.getItem("sw_profile") || "RELIANCE";
-    return "RELIANCE";
+    const fallback = equitySymbols[0] ?? "";
+    if (typeof window !== "undefined") return sessionStorage.getItem("sw_profile") || fallback;
+    return fallback;
   });
   const [prevTab, setPrevTab] = useState<TabKey | null>(null);
   const [showMore, setShowMore] = useState(false);
@@ -207,7 +209,7 @@ export function DashboardApp() {
             {activeTab === "home" && <DashboardHome balance={balance} onSelectSymbol={openChart} />}
             {activeTab === "watchlist" && <MarketOverview balance={balance} />}
             {activeTab === "chart" && <ChartPanel symbol={chartSymbol} onBack={goBack} />}
-            {activeTab === "options" && <OptionsChain />}
+            {activeTab === "options" && <OptionsChain onSelectSymbol={openChart} />}
             {activeTab === "screener" && <ScreenerPage onSelectSymbol={openChart} />}
             {activeTab === "globalMarkets" && <GlobalMarkets onSelectSymbol={openChart} />}
             {activeTab === "news" && <NewsSection />}

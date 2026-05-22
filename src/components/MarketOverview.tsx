@@ -9,24 +9,24 @@ import { watchlists, watchTabs, getContractMeta, getDerivativeSpotSymbol } from 
 import type { WatchlistKey } from "@/lib/marketData";
 import { useLiveQuotes } from "@/lib/useLiveQuotes";
 import { useDerivativeQuotes } from "@/lib/useDerivativeQuotes";
-import { YAHOO_SYMBOL_MAP, getCurrencySign } from "@/lib/symbolMap";
+import { SYMBOL_MAP, getCurrencySign } from "@/lib/symbolMap";
 import { StockDetailModal } from "@/components/StockDetailModal";
 import type { Instrument } from "@/types/app";
 
-// Instruments that have direct Yahoo tickers
-const DIRECT_SYMBOLS = Object.keys(YAHOO_SYMBOL_MAP);
+// Instruments that have direct market data tickers
+const DIRECT_SYMBOLS = Object.keys(SYMBOL_MAP);
 const allInstruments: Instrument[] = Object.values(watchlists).flat();
 
 type SortKey = "default" | "price_asc" | "price_desc" | "change_asc" | "change_desc";
 
 function useCombinedQuotes(tabSymbols: string[]) {
-  // Direct Yahoo symbols in this tab
+  // Direct symbols in this tab
   const directSymbols = useMemo(() => tabSymbols.filter((s) => DIRECT_SYMBOLS.includes(s)), [tabSymbols]);
   // Spot symbols needed for F&O derivation
   const needsSpot = useMemo(() =>
     tabSymbols.some((s) => !DIRECT_SYMBOLS.includes(s)), [tabSymbols]);
 
-  const directQuotes = useLiveQuotes(directSymbols, 12000);
+  const directQuotes = useLiveQuotes(directSymbols, 5000);
   const spotSymbolsForFO = useMemo(
     () => [
       ...new Set(
@@ -37,7 +37,7 @@ function useCombinedQuotes(tabSymbols: string[]) {
     ],
     [tabSymbols],
   );
-  const spotForFO = useLiveQuotes(needsSpot ? spotSymbolsForFO : [], 12000);
+  const spotForFO = useLiveQuotes(needsSpot ? spotSymbolsForFO : [], 5000);
   const derivativeQuotes = useDerivativeQuotes(spotForFO);
 
   return useMemo(() => {
@@ -47,7 +47,6 @@ function useCombinedQuotes(tabSymbols: string[]) {
         const d = derivativeQuotes[sym];
         combined[sym] = {
           symbol: sym,
-          yahooSymbol: sym,
           name: sym,
           price: d.price,
           change: d.change,
@@ -86,7 +85,7 @@ export function MarketOverview({ balance }: { balance: number }) {
   const selectedCombined = useCombinedQuotes(selectedTab);
   const selectedQuote = selectedCombined[selected.symbol];
 
-  // Search with Yahoo autocomplete
+  // Search with autocomplete
   const [searchResults, setSearchResults] = useState<Array<{ symbol: string; shortname: string; exchange: string }>>([]);
   const searchDebounce = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -192,6 +191,15 @@ export function MarketOverview({ balance }: { balance: number }) {
           <div className="flex items-center gap-3 rounded-2xl bg-[var(--background)]/80 px-4">
             <FiSearch className="shrink-0 text-[var(--text-muted)]" />
             <input value={searchValue} onChange={(e) => setSearchValue(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key !== "Enter") return;
+                if (searchResults.length === 0) return;
+                const first = searchResults[0];
+                const found = allInstruments.find((i) => i.symbol === first.symbol);
+                const inst = found ?? { symbol: first.symbol, title: first.shortname, subtitle: first.exchange, price: 0, change: 0, volume: "—", high: 0, low: 0 };
+                selectInstrument(inst);
+                setModalInstrument(inst);
+              }}
               placeholder="Search any stock, index, F&O symbol..."
               className="h-12 min-w-0 flex-1 bg-transparent text-sm text-[var(--text-primary)] outline-none placeholder:text-[var(--text-muted)]" />
             {searchValue && (

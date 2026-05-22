@@ -1,15 +1,42 @@
 "use client";
-// ─── F&O Options Chain — REAL Live Data from NSE via Yahoo Finance ───────
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { FiRefreshCw } from "react-icons/fi";
-import { equityInstruments, indexInstruments } from "@/lib/marketData";
+// ─── F&O Options Chain — NSE · MCX · BSE ─────────────────────────────────
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { FiRefreshCw, FiSearch, FiX, FiBarChart2 } from "react-icons/fi";
+import { equityInstruments, indexInstruments, watchlists } from "@/lib/marketData";
+import { getCurrencySign } from "@/lib/symbolMap";
 
-// Combine stocks + indices for F&O
-const FNO_INSTRUMENTS = [
-  ...indexInstruments.filter(i => ["NIFTY 50", "BANK NIFTY"].includes(i.symbol)),
+/* ── Instruments by exchange ──────────────────────────────────────────────── */
+type Exchange = "NSE" | "MCX" | "BSE";
+
+const NSE_FNO = [
+  ...indexInstruments.filter((i) => ["NIFTY 50", "BANK NIFTY"].includes(i.symbol)),
   ...equityInstruments.slice(0, 30),
 ];
 
+const MCX_FNO = watchlists.commodities.map((c) => ({
+  symbol: c.symbol,
+  title: c.title,
+  subtitle: "MCX",
+}));
+
+const BSE_FNO = [
+  { symbol: "SENSEX", title: "SENSEX", subtitle: "BSE Index" },
+  ...equityInstruments.slice(0, 15).map((e) => ({
+    symbol: e.symbol,
+    title: e.title,
+    subtitle: "BSE",
+  })),
+];
+
+const ALL_FNO = [...NSE_FNO, ...MCX_FNO, ...BSE_FNO];
+
+const EXCHANGE_INSTRUMENTS: Record<Exchange, Array<{ symbol: string; title: string; subtitle: string }>> = {
+  NSE: NSE_FNO,
+  MCX: MCX_FNO,
+  BSE: BSE_FNO,
+};
+
+/* ── Interfaces ───────────────────────────────────────────────────────────── */
 interface OptionLeg {
   premium: number;
   bid: number;
@@ -41,25 +68,142 @@ interface OptionsData {
   pcr: number;
   maxPainStrike: number;
   expiryStr: string;
-  expirationDates: number[];
+  expirationDates: string[];
   chain: StrikeRow[];
   totalCeOI: number;
   totalPeOI: number;
+  exchange?: string;
+  synthetic?: boolean;
 }
 
-export function OptionsChain() {
-  const [underlyingSymbol, setUnderlyingSymbol] = useState(FNO_INSTRUMENTS[0]?.symbol ?? "NIFTY 50");
+/* ── Parse search input ────────────────────────────────────────────────────── */
+// "NIFTY 23800" → { underlying: "NIFTY 50", strike: 23800 }
+// "RELIANCE" → { underlying: "RELIANCE", strike: null }
+// "23800" → { underlying: null, strike: 23800 }
+function parseSearchQuery(query: string): { underlying: string | null; strike: number | null } {
+  const trimmed = query.trim();
+  const normalized = trimmed.replace(/,/g, "");
+  // Pure number = strike price filter for current underlying
+  if (/^\d+(\.\d+)?$/.test(normalized)) {
+    return { underlying: null, strike: Number(normalized) };
+  }
+  // "NIFTY 23800" or "BANK NIFTY 24000" pattern
+  const parts = normalized.match(/^(.+?)\s+(\d{3,6}(?:\.\d+)?)$/);
+  if (parts) {
+    const name = parts[1].toUpperCase();
+    const strike = Number(parts[2]);
+    // Try to find the underlying instrument
+    const match = ALL_FNO.find(
+      (i) =>
+        i.symbol.toUpperCase() === name ||
+        i.title.toUpperCase() === name ||
+        i.symbol.toUpperCase().startsWith(name) ||
+        i.title.toUpperCase().includes(name)
+    );
+    return { underlying: match?.symbol ?? name, strike };
+  }
+  return { underlying: trimmed, strike: null };
+}
+
+/* ── Component ────────────────────────────────────────────────────────────── */
+export function OptionsChain({ onSelectSymbol }: { onSelectSymbol?: (symbol: string) => void }) {
+  const [exchange, setExchange] = useState<Exchange>("NSE");
+  const [underlyingSymbol, setUnderlyingSymbol] = useState(NSE_FNO[0]?.symbol ?? "NIFTY 50");
   const [selectedDate, setSelectedDate] = useState<string>("");
   const [data, setData] = useState<OptionsData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+  const [searchValue, setSearchValue] = useState("");
+  const [searchResults, setSearchResults] = useState<Array<{ symbol: string; shortname: string; exchange: string }>>([]);
+  const [strikeFilter, setStrikeFilter] = useState<number | null>(null);
+  const searchDebounce = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const searchRef = useRef<HTMLDivElement>(null);
+  const strikeScrollRef = useRef<HTMLTableRowElement | null>(null);
 
+  const instruments = EXCHANGE_INSTRUMENTS[exchange];
+  const cs = getCurrencySign(underlyingSymbol);
+
+  // When exchange changes, pick first instrument
+  const handleExchangeChange = (ex: Exchange) => {
+    setExchange(ex);
+    const first = EXCHANGE_INSTRUMENTS[ex][0];
+    if (first) setUnderlyingSymbol(first.symbol);
+    setSelectedDate("");
+    setSearchValue("");
+    setSearchResults([]);
+  };
+
+  /* ── Search ─────────────────────────────────────────────────────────────── */
+  useEffect(() => {
+    if (searchDebounce.current) clearTimeout(searchDebounce.current);
+    const query = searchValue.trim();
+    if (!query) { setSearchResults([]); return; }
+
+    const parsed = parseSearchQuery(query);
+
+    // If it's only a number, treat as strike filter for current underlying
+    if (parsed.underlying === null && parsed.strike !== null) {
+      setStrikeFilter(parsed.strike);
+      setSearchResults([]);
+      return;
+    }
+
+    searchDebounce.current = setTimeout(async () => {
+      try {
+        // Local matches across ALL exchanges
+        const localMatches = ALL_FNO
+          .filter((i) => i.symbol.toLowerCase().includes((parsed.underlying ?? query).toLowerCase()) || i.title.toLowerCase().includes((parsed.underlying ?? query).toLowerCase()))
+          .slice(0, 6)
+          .map((i) => ({
+            symbol: i.symbol,
+            shortname: i.title,
+            exchange: i.subtitle,
+            _strike: parsed.strike,
+          }));
+
+        // Search for more results
+        const res = await fetch(`/api/search?q=${encodeURIComponent(parsed.underlying ?? query)}`);
+        const json = await res.json();
+        const remote = (json.quotes ?? [])
+          .slice(0, 6)
+          .map((q: { symbol: string; shortname?: string; longname?: string; exchange?: string }) => ({
+            symbol: q.symbol?.replace(/\.NS$|\.BO$/, "") ?? q.symbol,
+            shortname: q.shortname ?? q.longname ?? q.symbol,
+            exchange: q.exchange ?? "",
+          }));
+
+        setSearchResults([
+          ...localMatches,
+          ...remote.filter((r: { symbol: string }) => !localMatches.find((l) => l.symbol === r.symbol)),
+        ].slice(0, 8));
+      } catch {
+        const local = ALL_FNO
+          .filter((i) => i.symbol.toLowerCase().includes(query.toLowerCase()))
+          .slice(0, 6)
+          .map((i) => ({ symbol: i.symbol, shortname: i.title, exchange: i.subtitle }));
+        setSearchResults(local);
+      }
+    }, 300);
+  }, [searchValue]);
+
+  // Close search dropdown on outside click
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (searchRef.current && !searchRef.current.contains(e.target as Node)) {
+        setSearchResults([]);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  /* ── Fetch chain ────────────────────────────────────────────────────────── */
   const fetchChain = useCallback(async () => {
     setLoading(true);
     setError("");
     try {
-      const params = new URLSearchParams({ symbol: underlyingSymbol });
+      const params = new URLSearchParams({ symbol: underlyingSymbol, exchange });
       if (selectedDate) params.set("date", selectedDate);
       const resp = await fetch(`/api/options?${params}`);
       if (!resp.ok) throw new Error(`API error ${resp.status}`);
@@ -72,29 +216,59 @@ export function OptionsChain() {
     } finally {
       setLoading(false);
     }
-  }, [underlyingSymbol, selectedDate]);
+  }, [underlyingSymbol, selectedDate, exchange]);
 
   useEffect(() => { fetchChain(); }, [fetchChain]);
 
-  // Auto-refresh every 30s
+  // Auto-refresh every 15s
   useEffect(() => {
-    const id = setInterval(fetchChain, 30000);
+    const id = setInterval(fetchChain, 15000);
     return () => clearInterval(id);
   }, [fetchChain]);
 
-  // Expiry options for dropdown
+  /* ── Expiry options ─────────────────────────────────────────────────────── */
   const expiryOptions = useMemo(() => {
     if (!data?.expirationDates) return [];
-    return data.expirationDates.map((ts) => ({
-      value: String(ts),
-      label: new Date(ts * 1000).toLocaleDateString("en-IN", {
-        day: "2-digit", month: "short", year: "numeric",
-      }),
-    }));
+    return data.expirationDates.map((dateStr) => {
+      // Upstox returns ISO date strings like "2026-05-26"
+      const parts = String(dateStr).split("-");
+      let label = String(dateStr);
+      if (parts.length === 3) {
+        const d = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
+        if (!isNaN(d.getTime())) {
+          label = d.toLocaleDateString("en-IN", {
+            day: "2-digit", month: "short", year: "numeric",
+          });
+        }
+      }
+      return { value: String(dateStr), label };
+    });
   }, [data?.expirationDates]);
 
   const chain = data?.chain ?? [];
   const spotPrice = data?.spotPrice ?? 0;
+
+  // Filter chain when strike filter is active — show 10 strikes around the target
+  const displayChain = useMemo(() => {
+    if (!strikeFilter || chain.length === 0) return chain;
+    // Find closest strike to the filter
+    let closestIdx = 0;
+    let minDist = Infinity;
+    for (let i = 0; i < chain.length; i++) {
+      const dist = Math.abs(chain[i].strike - strikeFilter);
+      if (dist < minDist) { minDist = dist; closestIdx = i; }
+    }
+    const from = Math.max(0, closestIdx - 5);
+    const to = Math.min(chain.length, closestIdx + 6);
+    return chain.slice(from, to);
+  }, [chain, strikeFilter]);
+
+  // Scroll to the target strike row after data loads
+  useEffect(() => {
+    if (strikeFilter && strikeScrollRef.current) {
+      strikeScrollRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+  }, [strikeFilter, displayChain]);
 
   return (
     <div className="space-y-4">
@@ -103,23 +277,118 @@ export function OptionsChain() {
         <div className="flex items-center justify-between mb-3">
           <div>
             <p className="text-xs font-semibold uppercase tracking-widest text-[var(--green)]">
-              Options Chain · Live
+              Options Chain · {exchange}
             </p>
             {lastUpdated && (
               <p className="text-[10px] text-[var(--text-muted)]">
                 Updated: {lastUpdated.toLocaleTimeString("en-IN")}
+                {data?.synthetic && <span className="ml-1 text-[var(--warn-label)]">(Synthetic B-S)</span>}
               </p>
             )}
           </div>
-          <button type="button" onClick={fetchChain}
-            className="flex items-center gap-1.5 rounded-xl border border-[var(--card-border)] px-3 py-2 text-xs font-semibold text-[var(--text-secondary)] hover:text-[var(--green)]">
-            <FiRefreshCw size={12} className={loading ? "animate-spin" : ""} /> Refresh
-          </button>
+          <div className="flex items-center gap-2">
+            {onSelectSymbol && (
+              <button type="button" onClick={() => onSelectSymbol(underlyingSymbol)}
+                className="flex items-center gap-1.5 rounded-xl border border-[var(--card-border)] px-3 py-2 text-xs font-semibold text-[var(--text-secondary)] hover:text-[var(--accent-label)]">
+                <FiBarChart2 size={12} /> Chart
+              </button>
+            )}
+            <button type="button" onClick={fetchChain}
+              className="flex items-center gap-1.5 rounded-xl border border-[var(--card-border)] px-3 py-2 text-xs font-semibold text-[var(--text-secondary)] hover:text-[var(--green)]">
+              <FiRefreshCw size={12} className={loading ? "animate-spin" : ""} /> Refresh
+            </button>
+          </div>
         </div>
 
-        {/* Underlying selector */}
-        <div className="flex flex-wrap gap-1.5 mb-3">
-          {FNO_INSTRUMENTS.map((item) => (
+        {/* Exchange tabs */}
+        <div className="flex gap-2 mb-3">
+          {(["NSE", "MCX", "BSE"] as Exchange[]).map((ex) => (
+            <button key={ex} type="button" onClick={() => handleExchangeChange(ex)}
+              className={`h-9 rounded-xl px-4 text-xs font-bold transition ${
+                exchange === ex
+                  ? "bg-emerald-400 text-slate-950"
+                  : "bg-[var(--background)]/80 text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+              }`}>
+              {ex} {ex === "MCX" ? "Commodity" : ex === "BSE" ? "Sensex" : "F&O"}
+            </button>
+          ))}
+        </div>
+
+        {/* Search */}
+        <div ref={searchRef} className="relative mb-3">
+          <div className="flex items-center rounded-xl border border-[var(--card-border)] bg-[var(--background)]/80 px-3">
+            <FiSearch size={14} className="text-[var(--text-muted)]" />
+            <input
+              type="text"
+              value={searchValue}
+              onChange={(e) => setSearchValue(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key !== "Enter") return;
+                const parsed = parseSearchQuery(searchValue);
+                if (parsed.strike != null) {
+                  setStrikeFilter(parsed.strike);
+                  if (parsed.underlying) {
+                    setUnderlyingSymbol(parsed.underlying);
+                    setSelectedDate("");
+                  }
+                  setSearchResults([]);
+                }
+              }}
+              placeholder={`Search instrument or strike e.g. "NIFTY 23800"...`}
+              className="h-10 flex-1 bg-transparent px-2 text-sm text-[var(--text-primary)] outline-none placeholder:text-[var(--text-muted)]"
+            />
+            {searchValue && (
+              <button type="button" onClick={() => { setSearchValue(""); setSearchResults([]); }}
+                className="text-[var(--text-muted)] hover:text-[var(--text-primary)]">
+                <FiX size={14} />
+              </button>
+            )}
+          </div>
+          {searchResults.length > 0 && (
+            <div className="absolute left-0 right-0 top-full z-50 mt-1 rounded-xl border border-[var(--card-border)] bg-[var(--dropdown-bg)] p-1 shadow-xl backdrop-blur-xl">
+              {searchResults.map((r) => {
+                const parsed = parseSearchQuery(searchValue);
+                return (
+                <button key={r.symbol} type="button"
+                  onClick={() => {
+                    setUnderlyingSymbol(r.symbol);
+                    setSelectedDate("");
+                    setSearchValue("");
+                    setSearchResults([]);
+                    if (parsed.strike) setStrikeFilter(parsed.strike);
+                  }}
+                  className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-left hover:bg-[var(--hover-bg)]">
+                  <div>
+                    <p className="text-sm font-bold text-[var(--text-primary)]">{r.symbol}</p>
+                    <p className="text-[10px] text-[var(--text-muted)]">{r.shortname}</p>
+                  </div>
+                  <span className="text-[10px] text-[var(--text-muted)]">
+                    {r.exchange}
+                    {parsed.strike ? ` · Strike ${parsed.strike}` : ""}
+                  </span>
+                </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        {/* Active strike filter indicator */}
+        {strikeFilter && (
+          <div className="mb-3 flex items-center gap-2">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-400/15 px-3 py-1 text-xs font-bold text-[var(--warn-label)]">
+              Strike: {strikeFilter.toLocaleString("en-IN")}
+              <button type="button" onClick={() => setStrikeFilter(null)} className="ml-1 hover:text-[var(--text-primary)]">
+                <FiX size={12} />
+              </button>
+            </span>
+            <span className="text-[10px] text-[var(--text-muted)]">Showing strikes near {strikeFilter}</span>
+          </div>
+        )}
+
+        {/* Instrument buttons (scrollable) */}
+        <div className="flex flex-wrap gap-1.5 mb-3 max-h-24 overflow-y-auto">
+          {instruments.map((item) => (
             <button key={item.symbol} type="button"
               onClick={() => { setUnderlyingSymbol(item.symbol); setSelectedDate(""); }}
               className={`h-8 rounded-lg px-3 text-[11px] font-bold transition ${
@@ -163,7 +432,7 @@ export function OptionsChain() {
           <div className="rounded-xl bg-[var(--background)] p-3 text-center">
             <p className="text-[10px] font-semibold text-[var(--text-muted)]">Spot Price</p>
             <p className="text-base font-bold text-[var(--text-primary)]">
-              {spotPrice > 0 ? `₹${spotPrice.toLocaleString("en-IN", { maximumFractionDigits: 2 })}` : "—"}
+              {spotPrice > 0 ? `${cs}${spotPrice.toLocaleString("en-IN", { maximumFractionDigits: 2 })}` : "—"}
             </p>
             <p className="text-[10px] text-[var(--text-muted)]">{data?.underlyingName ?? underlyingSymbol}</p>
           </div>
@@ -179,7 +448,7 @@ export function OptionsChain() {
           <div className="rounded-xl bg-[var(--background)] p-3 text-center">
             <p className="text-[10px] font-semibold text-[var(--text-muted)]">Max Pain</p>
             <p className="text-base font-bold text-[var(--warn-label)]">
-              {data?.maxPainStrike ? `₹${data.maxPainStrike.toLocaleString("en-IN")}` : "—"}
+              {data?.maxPainStrike ? `${cs}${data.maxPainStrike.toLocaleString("en-IN")}` : "—"}
             </p>
           </div>
           <div className="rounded-xl bg-[var(--background)] p-3 text-center">
@@ -220,8 +489,14 @@ export function OptionsChain() {
         )}
 
         {/* Chain table */}
-        {chain.length > 0 && (
+        {displayChain.length > 0 && (
           <div className="overflow-x-auto rounded-2xl border border-[var(--card-border)]">
+            {strikeFilter && (
+              <div className="bg-amber-400/10 px-3 py-1.5 text-[10px] font-semibold text-[var(--warn-label)] flex items-center justify-between">
+                <span>Showing strikes near {strikeFilter.toLocaleString("en-IN")}</span>
+                <button type="button" onClick={() => setStrikeFilter(null)} className="underline hover:no-underline text-[var(--text-secondary)]">Show all</button>
+              </div>
+            )}
             <table className="w-full text-[11px]">
               <thead>
                 <tr className="border-b border-[var(--card-border)] text-[var(--text-muted)]">
@@ -230,9 +505,9 @@ export function OptionsChain() {
                   <th className="p-2 text-right text-[var(--green)] font-semibold">IV%</th>
                   <th className="p-2 text-right text-[var(--green)] font-semibold">Chg%</th>
                   <th className="p-2 text-right text-[var(--green)] font-semibold">Bid</th>
-                  <th className="p-2 text-right text-[var(--green)] font-bold">CE ₹</th>
+                  <th className="p-2 text-right text-[var(--green)] font-bold">CE {cs}</th>
                   <th className="p-2 text-center font-bold text-[var(--text-primary)] bg-[var(--background)]">STRIKE</th>
-                  <th className="p-2 text-left text-[var(--red)] font-bold">PE ₹</th>
+                  <th className="p-2 text-left text-[var(--red)] font-bold">PE {cs}</th>
                   <th className="p-2 text-left text-[var(--red)] font-semibold">Bid</th>
                   <th className="p-2 text-left text-[var(--red)] font-semibold">Chg%</th>
                   <th className="p-2 text-left text-[var(--red)] font-semibold">IV%</th>
@@ -241,19 +516,26 @@ export function OptionsChain() {
                 </tr>
               </thead>
               <tbody>
-                {chain.map((row) => {
+                {displayChain.map((row) => {
                   const ceUp = row.ce.change >= 0;
                   const peUp = row.pe.change >= 0;
+                  const isFilterTarget = strikeFilter != null && row.strike === strikeFilter;
+                  const isClosestToFilter = strikeFilter != null && !displayChain.some((r) => r.strike === strikeFilter) &&
+                    row.strike === displayChain.reduce((prev, curr) => Math.abs(curr.strike - strikeFilter) < Math.abs(prev.strike - strikeFilter) ? curr : prev).strike;
+                  const isHighlighted = isFilterTarget || isClosestToFilter;
                   return (
                     <tr key={row.strike}
+                      ref={isHighlighted ? strikeScrollRef : undefined}
                       className={`border-b border-[var(--card-border)] transition-colors ${
-                        row.isATM
-                          ? "bg-amber-400/10"
-                          : row.ce.itm
-                            ? "bg-emerald-400/[0.04]"
-                            : row.pe.itm
-                              ? "bg-red-400/[0.04]"
-                              : ""
+                        isHighlighted
+                          ? "bg-indigo-400/20 ring-1 ring-indigo-400/40"
+                          : row.isATM
+                            ? "bg-amber-400/10"
+                            : row.ce.itm
+                              ? "bg-emerald-400/[0.04]"
+                              : row.pe.itm
+                                ? "bg-red-400/[0.04]"
+                                : ""
                       }`}>
                       {/* CE side */}
                       <td className="p-1.5 text-right text-[var(--text-secondary)]">
@@ -272,7 +554,7 @@ export function OptionsChain() {
                         {row.ce.bid > 0 ? row.ce.bid.toFixed(2) : "—"}
                       </td>
                       <td className={`p-1.5 text-right font-bold ${ceUp ? "text-[var(--green)]" : "text-[var(--red)]"}`}>
-                        {row.ce.premium > 0 ? `₹${row.ce.premium.toFixed(2)}` : "—"}
+                        {row.ce.premium > 0 ? `${cs}${row.ce.premium.toFixed(2)}` : "—"}
                       </td>
 
                       {/* Strike */}
@@ -283,7 +565,7 @@ export function OptionsChain() {
 
                       {/* PE side */}
                       <td className={`p-1.5 text-left font-bold ${peUp ? "text-[var(--green)]" : "text-[var(--red)]"}`}>
-                        {row.pe.premium > 0 ? `₹${row.pe.premium.toFixed(2)}` : "—"}
+                        {row.pe.premium > 0 ? `${cs}${row.pe.premium.toFixed(2)}` : "—"}
                       </td>
                       <td className="p-1.5 text-left text-[var(--text-muted)]">
                         {row.pe.bid > 0 ? row.pe.bid.toFixed(2) : "—"}
@@ -311,7 +593,7 @@ export function OptionsChain() {
         {/* No data */}
         {!loading && chain.length === 0 && !error && (
           <div className="rounded-xl bg-[var(--background)] p-6 text-center text-sm text-[var(--text-muted)]">
-            No options data available for {underlyingSymbol}. Try a different stock.
+            No options data available for {underlyingSymbol} on {exchange}. Try searching for another instrument.
           </div>
         )}
       </div>
@@ -354,7 +636,7 @@ export function OptionsChain() {
           <p>OI — Open Interest · IV — Implied Volatility</p>
         </div>
         <p className="mt-2 text-[10px] text-[var(--text-muted)]">
-          All data is LIVE from market feed. Auto-refreshes every 30 seconds.
+          {exchange} options data. Auto-refreshes every 15 seconds. {data?.synthetic ? "Using synthetic Black-Scholes model." : "Live market feed."}
         </p>
       </div>
     </div>

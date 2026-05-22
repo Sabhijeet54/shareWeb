@@ -3,7 +3,7 @@
 // Derives real-time F&O prices from live spot prices using financial math.
 // Futures: cost-of-carry model (F = S * e^(rT))
 // Options: Black-Scholes with vol smile
-// OI/volume: proportional to live spot OI proxy via Yahoo
+// OI/volume: proportional to live spot OI proxy
 
 import { useMemo } from "react";
 import type { LiveQuote } from "./useLiveQuotes";

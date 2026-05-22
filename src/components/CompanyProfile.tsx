@@ -65,7 +65,7 @@ export function CompanyProfile({ symbol, onSelectSymbol }: { symbol: string; onS
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [showFullDesc, setShowFullDesc] = useState(false);
-  const quotes = useLiveQuotes([symbol], 1500);
+  const quotes = useLiveQuotes([symbol], 3000);
   const q = quotes[symbol];
 
   const fetchProfile = useCallback(async () => {

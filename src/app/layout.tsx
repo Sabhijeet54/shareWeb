@@ -29,7 +29,10 @@ export default function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} dark h-full antialiased`}
       data-theme="dark"
     >
-      <body className="flex min-h-full flex-col bg-[var(--background)] text-[var(--foreground)]">
+      <body
+        className="flex min-h-full flex-col bg-[var(--background)] text-[var(--foreground)]"
+        suppressHydrationWarning
+      >
         <ThemeWrapper>{children}</ThemeWrapper>
       </body>
     </html>

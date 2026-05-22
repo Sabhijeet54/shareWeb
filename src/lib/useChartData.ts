@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { toYahoo } from "@/lib/symbolMap";
 
 export type OHLCVBar = {
   time: number; // unix seconds
@@ -18,6 +17,7 @@ type UseChartDataResult = {
   isError: boolean;
 };
 
+// Fetches chart data from internal /api/chart — never calls external APIs directly.
 export function useChartData(
   symbol: string,
   interval: string,
@@ -39,10 +39,8 @@ export function useChartData(
     setIsError(false);
     setBars([]);
 
-    const yahooSym = toYahoo(symbol);
-
     fetch(
-      `/api/chart?symbol=${encodeURIComponent(yahooSym)}&interval=${interval}&range=${range}`,
+      `/api/chart?symbol=${encodeURIComponent(symbol)}&interval=${interval}&range=${range}`,
       { signal: controller.signal },
     )
       .then((r) => {
