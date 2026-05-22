@@ -87,34 +87,71 @@ export function MarketOverview({ balance }: { balance: number }) {
 
   // Search with autocomplete
   const [searchResults, setSearchResults] = useState<Array<{ symbol: string; shortname: string; exchange: string }>>([]);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [searchLoading, setSearchLoading] = useState(false);
+  const [activeSuggestionIdx, setActiveSuggestionIdx] = useState(-1);
   const searchDebounce = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const searchAbortRef = useRef<AbortController | null>(null);
+  const searchRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (searchDebounce.current) clearTimeout(searchDebounce.current);
+    searchAbortRef.current?.abort();
     const query = searchValue.trim();
-    if (!query) { setSearchResults([]); return; }
+    if (!query) {
+      setSearchResults([]);
+      setSearchOpen(false);
+      setSearchLoading(false);
+      setActiveSuggestionIdx(-1);
+      return;
+    }
+    setSearchOpen(true);
+    setSearchLoading(true);
     searchDebounce.current = setTimeout(async () => {
       try {
+        const controller = new AbortController();
+        searchAbortRef.current = controller;
+        const timeout = setTimeout(() => controller.abort(), 7000);
+
         const localMatches = allInstruments
           .filter((i) => i.symbol.toLowerCase().includes(query.toLowerCase()) || i.title.toLowerCase().includes(query.toLowerCase()))
           .slice(0, 3);
 
-        const res = await fetch(`/api/search?q=${encodeURIComponent(query)}`);
+        const res = await fetch(`/api/search?q=${encodeURIComponent(query)}&limit=20`, { signal: controller.signal });
         const data = await res.json();
-        const remote = (data.quotes ?? []).slice(0, 5).map((q: { symbol: string; shortname?: string; longname?: string; exchange?: string }) => ({
+        clearTimeout(timeout);
+        const remote = (data.quotes ?? []).slice(0, 20).map((q: { symbol: string; shortname?: string; longname?: string; exchange?: string }) => ({
           symbol: q.symbol, shortname: q.shortname ?? q.longname ?? q.symbol, exchange: q.exchange ?? "",
         }));
 
-        setSearchResults([
+        const merged = [
           ...localMatches.map((i) => ({ symbol: i.symbol, shortname: i.title, exchange: i.subtitle })),
           ...remote.filter((r: { symbol: string }) => !localMatches.find((l) => l.symbol === r.symbol)),
-        ].slice(0, 8));
-      } catch {
+        ].slice(0, 20);
+        setSearchResults(merged);
+        setActiveSuggestionIdx(merged.length > 0 ? 0 : -1);
+      } catch (err) {
+        if ((err as Error).name === "AbortError") return;
         const local = allInstruments.filter((i) => i.symbol.toLowerCase().includes(query.toLowerCase())).slice(0, 6);
-        setSearchResults(local.map((i) => ({ symbol: i.symbol, shortname: i.title, exchange: i.subtitle })));
+        const mapped = local.map((i) => ({ symbol: i.symbol, shortname: i.title, exchange: i.subtitle }));
+        setSearchResults(mapped);
+        setActiveSuggestionIdx(mapped.length > 0 ? 0 : -1);
+      } finally {
+        setSearchLoading(false);
       }
     }, 280);
   }, [searchValue]);
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (searchRef.current && !searchRef.current.contains(e.target as Node)) {
+        setSearchOpen(false);
+        setActiveSuggestionIdx(-1);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
 
   // Price alerts check
   useEffect(() => {
@@ -142,12 +179,16 @@ export function MarketOverview({ balance }: { balance: number }) {
     setActiveTab(tab);
     setSelected(watchlists[tab][0]);
     setSearchValue("");
+    setSearchOpen(false);
+    setSearchResults([]);
   }
 
   function selectInstrument(inst: Instrument) {
     setSelected(inst);
     setSearchValue("");
     setSearchResults([]);
+    setSearchOpen(false);
+    setActiveSuggestionIdx(-1);
   }
 
   const effectivePrice = selectedQuote?.price ?? 0;
@@ -187,44 +228,73 @@ export function MarketOverview({ balance }: { balance: number }) {
         </div>
 
         {/* Search */}
-        <div className="relative mt-3">
+        <div ref={searchRef} className="relative mt-3">
           <div className="flex items-center gap-3 rounded-2xl bg-[var(--background)]/80 px-4">
             <FiSearch className="shrink-0 text-[var(--text-muted)]" />
             <input value={searchValue} onChange={(e) => setSearchValue(e.target.value)}
               onKeyDown={(e) => {
+                if (e.key === "ArrowDown") {
+                  e.preventDefault();
+                  if (searchResults.length > 0) {
+                    setActiveSuggestionIdx((prev) => (prev + 1) % searchResults.length);
+                    setSearchOpen(true);
+                  }
+                  return;
+                }
+                if (e.key === "ArrowUp") {
+                  e.preventDefault();
+                  if (searchResults.length > 0) {
+                    setActiveSuggestionIdx((prev) => (prev <= 0 ? searchResults.length - 1 : prev - 1));
+                  }
+                  return;
+                }
+                if (e.key === "Escape") {
+                  setSearchOpen(false);
+                  setActiveSuggestionIdx(-1);
+                  return;
+                }
                 if (e.key !== "Enter") return;
                 if (searchResults.length === 0) return;
-                const first = searchResults[0];
-                const found = allInstruments.find((i) => i.symbol === first.symbol);
-                const inst = found ?? { symbol: first.symbol, title: first.shortname, subtitle: first.exchange, price: 0, change: 0, volume: "—", high: 0, low: 0 };
+                const selectedResult = searchResults[activeSuggestionIdx >= 0 ? activeSuggestionIdx : 0];
+                const found = allInstruments.find((i) => i.symbol === selectedResult.symbol);
+                const inst = found ?? { symbol: selectedResult.symbol, title: selectedResult.shortname, subtitle: selectedResult.exchange, price: 0, change: 0, volume: "—", high: 0, low: 0 };
                 selectInstrument(inst);
                 setModalInstrument(inst);
+                setSearchOpen(false);
               }}
+              onFocus={() => setSearchOpen(true)}
               placeholder="Search any stock, index, F&O symbol..."
               className="h-12 min-w-0 flex-1 bg-transparent text-sm text-[var(--text-primary)] outline-none placeholder:text-[var(--text-muted)]" />
             {searchValue && (
-              <button type="button" onClick={() => { setSearchValue(""); setSearchResults([]); }}>
+              <button type="button" onClick={() => { setSearchValue(""); setSearchResults([]); setSearchOpen(false); setActiveSuggestionIdx(-1); setSearchLoading(false); }}>
                 <FiX className="text-[var(--text-muted)]" />
               </button>
             )}
           </div>
-          {searchResults.length > 0 && (
-            <div className="absolute left-0 right-0 top-14 z-20 rounded-2xl border border-[var(--card-border)] bg-[var(--dropdown-bg)] p-2 shadow-2xl">
-              {searchResults.map((item) => (
-                <button key={item.symbol} type="button"
+          {searchOpen && searchValue.trim() && (
+            <div className="absolute left-0 right-0 top-14 z-[80] overflow-hidden rounded-2xl border border-[var(--card-border)] bg-[var(--dropdown-bg)] shadow-2xl">
+              <div className="max-h-80 overflow-y-auto overscroll-contain scroll-smooth p-2 [-webkit-overflow-scrolling:touch] touch-pan-y">
+                {searchLoading && <div className="px-3 py-2 text-xs text-[var(--text-muted)]">Searching...</div>}
+                {!searchLoading && searchResults.length === 0 && <div className="px-3 py-2 text-xs text-[var(--text-muted)]">No matches found.</div>}
+                {!searchLoading && searchResults.map((item, idx) => (
+                  <button key={`${item.symbol}-${idx}`} type="button"
+                  onMouseDown={(e) => e.preventDefault()}
+                  onMouseEnter={() => setActiveSuggestionIdx(idx)}
                   onClick={() => {
                     const found = allInstruments.find((i) => i.symbol === item.symbol);
                     const inst = found ?? { symbol: item.symbol, title: item.shortname, subtitle: item.exchange, price: 0, change: 0, volume: "—", high: 0, low: 0 };
                     selectInstrument(inst);
                     setModalInstrument(inst);
+                    setSearchOpen(false);
                   }}
-                  className="flex w-full items-center justify-between rounded-xl px-3 py-3 text-left hover:bg-[var(--hover-bg)]">
+                  className={`flex w-full items-center justify-between rounded-xl px-3 py-3 text-left ${idx === activeSuggestionIdx ? "bg-[var(--hover-bg)]" : "hover:bg-[var(--hover-bg)]"}`}>
                   <span>
                     <span className="block text-sm font-bold text-[var(--text-primary)]">{item.shortname}</span>
                     <span className="text-xs text-[var(--text-muted)]">{item.symbol} · {item.exchange}</span>
                   </span>
                 </button>
               ))}
+            </div>
             </div>
           )}
         </div>
@@ -240,8 +310,15 @@ export function MarketOverview({ balance }: { balance: number }) {
             const active = item.symbol === selected.symbol;
 
             return (
-              <button key={item.symbol} type="button"
+              <div key={item.symbol} role="button" tabIndex={0}
                 onClick={() => { selectInstrument(item); setModalInstrument(item); }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    selectInstrument(item);
+                    setModalInstrument(item);
+                  }
+                }}
                 className={`min-h-20 rounded-2xl border p-4 text-left transition ${active ? "border-emerald-300/60 bg-emerald-300/10" : "border-[var(--card-border)] bg-[var(--background)]/80 hover:border-white/20"}`}>
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0">
@@ -270,7 +347,7 @@ export function MarketOverview({ balance }: { balance: number }) {
                     </span>
                   </div>
                 )}
-              </button>
+              </div>
             );
           })}
         </div>

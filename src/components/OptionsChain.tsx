@@ -76,6 +76,19 @@ interface OptionsData {
   synthetic?: boolean;
 }
 
+type SearchSuggestion = {
+  symbol: string;
+  shortname: string;
+  longname?: string;
+  exchange: string;
+  instrumentKey?: string;
+  quoteType?: "EQUITY" | "INDEX" | "OPTION" | "FUTURE" | "OTHER";
+  expiry?: string;
+  strike?: number;
+  optionType?: "CE" | "PE";
+  underlyingSymbol?: string;
+};
+
 /* ── Parse search input ────────────────────────────────────────────────────── */
 // "NIFTY 23800" → { underlying: "NIFTY 50", strike: 23800 }
 // "RELIANCE" → { underlying: "RELIANCE", strike: null }
@@ -115,14 +128,45 @@ export function OptionsChain({ onSelectSymbol }: { onSelectSymbol?: (symbol: str
   const [error, setError] = useState("");
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [searchValue, setSearchValue] = useState("");
-  const [searchResults, setSearchResults] = useState<Array<{ symbol: string; shortname: string; exchange: string }>>([]);
+  const [searchResults, setSearchResults] = useState<SearchSuggestion[]>([]);
+  const [searchLoading, setSearchLoading] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [activeSuggestionIdx, setActiveSuggestionIdx] = useState(-1);
   const [strikeFilter, setStrikeFilter] = useState<number | null>(null);
   const searchDebounce = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const searchAbortRef = useRef<AbortController | null>(null);
   const searchRef = useRef<HTMLDivElement>(null);
   const strikeScrollRef = useRef<HTMLTableRowElement | null>(null);
 
   const instruments = EXCHANGE_INSTRUMENTS[exchange];
   const cs = getCurrencySign(underlyingSymbol);
+
+  const applySuggestionSelection = useCallback((item: SearchSuggestion) => {
+    const ex = item.exchange.toUpperCase();
+    const exMaybe = ex === "NSE" || ex === "BSE" || ex === "MCX" ? (ex as Exchange) : null;
+    if (exMaybe && exMaybe !== exchange) {
+      setExchange(exMaybe);
+    }
+
+    const nextUnderlying = item.quoteType === "OPTION"
+      ? (item.underlyingSymbol || underlyingSymbol)
+      : item.symbol;
+
+    setUnderlyingSymbol(nextUnderlying);
+    setSelectedDate(item.expiry && /^\d{4}-\d{2}-\d{2}$/.test(item.expiry) ? item.expiry : "");
+    if (typeof item.strike === "number" && Number.isFinite(item.strike)) {
+      setStrikeFilter(item.strike);
+    }
+
+    setSearchValue("");
+    setSearchResults([]);
+    setSearchOpen(false);
+    setActiveSuggestionIdx(-1);
+
+    if (onSelectSymbol) {
+      onSelectSymbol(item.symbol);
+    }
+  }, [exchange, onSelectSymbol, underlyingSymbol]);
 
   // When exchange changes, pick first instrument
   const handleExchangeChange = (ex: Exchange) => {
@@ -137,8 +181,15 @@ export function OptionsChain({ onSelectSymbol }: { onSelectSymbol?: (symbol: str
   /* ── Search ─────────────────────────────────────────────────────────────── */
   useEffect(() => {
     if (searchDebounce.current) clearTimeout(searchDebounce.current);
+    searchAbortRef.current?.abort();
     const query = searchValue.trim();
-    if (!query) { setSearchResults([]); return; }
+    if (!query) {
+      setSearchResults([]);
+      setSearchLoading(false);
+      setSearchOpen(false);
+      setActiveSuggestionIdx(-1);
+      return;
+    }
 
     const parsed = parseSearchQuery(query);
 
@@ -146,43 +197,70 @@ export function OptionsChain({ onSelectSymbol }: { onSelectSymbol?: (symbol: str
     if (parsed.underlying === null && parsed.strike !== null) {
       setStrikeFilter(parsed.strike);
       setSearchResults([]);
+      setSearchLoading(false);
+      setSearchOpen(false);
+      setActiveSuggestionIdx(-1);
       return;
     }
 
+    setSearchLoading(true);
+    setSearchOpen(true);
+
     searchDebounce.current = setTimeout(async () => {
       try {
+        const controller = new AbortController();
+        searchAbortRef.current = controller;
+        const timeout = setTimeout(() => controller.abort(), 7000);
+
         // Local matches across ALL exchanges
-        const localMatches = ALL_FNO
+        const localMatches: SearchSuggestion[] = ALL_FNO
           .filter((i) => i.symbol.toLowerCase().includes((parsed.underlying ?? query).toLowerCase()) || i.title.toLowerCase().includes((parsed.underlying ?? query).toLowerCase()))
           .slice(0, 6)
           .map((i) => ({
             symbol: i.symbol,
             shortname: i.title,
             exchange: i.subtitle,
-            _strike: parsed.strike,
+            quoteType: "EQUITY" as const,
+            strike: parsed.strike ?? undefined,
           }));
 
         // Search for more results
-        const res = await fetch(`/api/search?q=${encodeURIComponent(parsed.underlying ?? query)}`);
+        const res = await fetch(`/api/search?q=${encodeURIComponent(query)}&limit=20`, { signal: controller.signal });
         const json = await res.json();
-        const remote = (json.quotes ?? [])
-          .slice(0, 6)
-          .map((q: { symbol: string; shortname?: string; longname?: string; exchange?: string }) => ({
-            symbol: q.symbol?.replace(/\.NS$|\.BO$/, "") ?? q.symbol,
+        clearTimeout(timeout);
+        const remote: SearchSuggestion[] = (json.quotes ?? [])
+          .slice(0, 18)
+          .map((q: SearchSuggestion) => ({
+            symbol: q.symbol,
             shortname: q.shortname ?? q.longname ?? q.symbol,
             exchange: q.exchange ?? "",
+            instrumentKey: q.instrumentKey,
+            quoteType: q.quoteType,
+            expiry: q.expiry,
+            strike: q.strike,
+            optionType: q.optionType,
+            underlyingSymbol: q.underlyingSymbol,
           }));
 
-        setSearchResults([
+        const merged = [
           ...localMatches,
-          ...remote.filter((r: { symbol: string }) => !localMatches.find((l) => l.symbol === r.symbol)),
-        ].slice(0, 8));
-      } catch {
+          ...remote.filter((r: SearchSuggestion) => !localMatches.find((l: SearchSuggestion) => l.symbol === r.symbol)),
+        ].slice(0, 20);
+
+        setSearchResults(merged);
+        setActiveSuggestionIdx(merged.length > 0 ? 0 : -1);
+        setSearchOpen(true);
+      } catch (err) {
+        if ((err as Error).name === "AbortError") return;
         const local = ALL_FNO
-          .filter((i) => i.symbol.toLowerCase().includes(query.toLowerCase()))
+          .filter((i) => i.symbol.toLowerCase().includes((parsed.underlying ?? query).toLowerCase()))
           .slice(0, 6)
-          .map((i) => ({ symbol: i.symbol, shortname: i.title, exchange: i.subtitle }));
+          .map((i) => ({ symbol: i.symbol, shortname: i.title, exchange: i.subtitle, quoteType: "EQUITY" as const, strike: parsed.strike ?? undefined }));
         setSearchResults(local);
+        setActiveSuggestionIdx(local.length > 0 ? 0 : -1);
+        setSearchOpen(true);
+      } finally {
+        setSearchLoading(false);
       }
     }, 300);
   }, [searchValue]);
@@ -191,7 +269,8 @@ export function OptionsChain({ onSelectSymbol }: { onSelectSymbol?: (symbol: str
   useEffect(() => {
     const handler = (e: MouseEvent) => {
       if (searchRef.current && !searchRef.current.contains(e.target as Node)) {
-        setSearchResults([]);
+        setSearchOpen(false);
+        setActiveSuggestionIdx(-1);
       }
     };
     document.addEventListener("mousedown", handler);
@@ -321,9 +400,42 @@ export function OptionsChain({ onSelectSymbol }: { onSelectSymbol?: (symbol: str
             <input
               type="text"
               value={searchValue}
-              onChange={(e) => setSearchValue(e.target.value)}
+              onChange={(e) => {
+                setSearchValue(e.target.value);
+                setSearchOpen(true);
+              }}
               onKeyDown={(e) => {
+                if (e.key === "ArrowDown") {
+                  e.preventDefault();
+                  if (!searchOpen) setSearchOpen(true);
+                  if (searchResults.length > 0) {
+                    setActiveSuggestionIdx((prev) => (prev + 1) % searchResults.length);
+                  }
+                  return;
+                }
+
+                if (e.key === "ArrowUp") {
+                  e.preventDefault();
+                  if (searchResults.length > 0) {
+                    setActiveSuggestionIdx((prev) => (prev <= 0 ? searchResults.length - 1 : prev - 1));
+                  }
+                  return;
+                }
+
+                if (e.key === "Escape") {
+                  setSearchOpen(false);
+                  setActiveSuggestionIdx(-1);
+                  return;
+                }
+
                 if (e.key !== "Enter") return;
+                e.preventDefault();
+
+                if (searchOpen && activeSuggestionIdx >= 0 && searchResults[activeSuggestionIdx]) {
+                  applySuggestionSelection(searchResults[activeSuggestionIdx]);
+                  return;
+                }
+
                 const parsed = parseSearchQuery(searchValue);
                 if (parsed.strike != null) {
                   setStrikeFilter(parsed.strike);
@@ -331,44 +443,52 @@ export function OptionsChain({ onSelectSymbol }: { onSelectSymbol?: (symbol: str
                     setUnderlyingSymbol(parsed.underlying);
                     setSelectedDate("");
                   }
-                  setSearchResults([]);
+                  setSearchOpen(false);
                 }
               }}
+              onFocus={() => setSearchOpen(true)}
               placeholder={`Search instrument or strike e.g. "NIFTY 23800"...`}
               className="h-10 flex-1 bg-transparent px-2 text-sm text-[var(--text-primary)] outline-none placeholder:text-[var(--text-muted)]"
             />
             {searchValue && (
-              <button type="button" onClick={() => { setSearchValue(""); setSearchResults([]); }}
+              <button type="button" onClick={() => { setSearchValue(""); setSearchResults([]); setSearchOpen(false); setSearchLoading(false); setActiveSuggestionIdx(-1); }}
                 className="text-[var(--text-muted)] hover:text-[var(--text-primary)]">
                 <FiX size={14} />
               </button>
             )}
           </div>
-          {searchResults.length > 0 && (
-            <div className="absolute left-0 right-0 top-full z-50 mt-1 rounded-xl border border-[var(--card-border)] bg-[var(--dropdown-bg)] p-1 shadow-xl backdrop-blur-xl">
-              {searchResults.map((r) => {
-                const parsed = parseSearchQuery(searchValue);
+          {searchOpen && searchValue.trim() && (
+            <div className="absolute left-0 right-0 top-full z-[80] mt-1 overflow-hidden rounded-xl border border-[var(--card-border)] bg-[var(--dropdown-bg)] shadow-xl backdrop-blur-xl">
+              <div className="max-h-72 overflow-y-auto overscroll-contain scroll-smooth p-1 [scrollbar-gutter:stable] [-webkit-overflow-scrolling:touch] touch-pan-y">
+                {searchLoading && (
+                  <div className="px-3 py-3 text-xs text-[var(--text-muted)]">Searching live contracts...</div>
+                )}
+
+                {!searchLoading && searchResults.length === 0 && (
+                  <div className="px-3 py-3 text-xs text-[var(--text-muted)]">No contracts found.</div>
+                )}
+
+                {!searchLoading && searchResults.map((r, index) => {
+                  const isActive = index === activeSuggestionIdx;
                 return (
-                <button key={r.symbol} type="button"
-                  onClick={() => {
-                    setUnderlyingSymbol(r.symbol);
-                    setSelectedDate("");
-                    setSearchValue("");
-                    setSearchResults([]);
-                    if (parsed.strike) setStrikeFilter(parsed.strike);
-                  }}
-                  className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-left hover:bg-[var(--hover-bg)]">
-                  <div>
-                    <p className="text-sm font-bold text-[var(--text-primary)]">{r.symbol}</p>
-                    <p className="text-[10px] text-[var(--text-muted)]">{r.shortname}</p>
-                  </div>
-                  <span className="text-[10px] text-[var(--text-muted)]">
-                    {r.exchange}
-                    {parsed.strike ? ` · Strike ${parsed.strike}` : ""}
-                  </span>
-                </button>
+                    <button key={`${r.instrumentKey ?? r.symbol}-${index}`} type="button"
+                      onMouseDown={(e) => e.preventDefault()}
+                      onMouseEnter={() => setActiveSuggestionIdx(index)}
+                      onClick={() => applySuggestionSelection(r)}
+                      className={`flex w-full items-center justify-between rounded-lg px-3 py-2 text-left ${isActive ? "bg-[var(--hover-bg)]" : "hover:bg-[var(--hover-bg)]"}`}>
+                      <div>
+                        <p className="text-sm font-bold text-[var(--text-primary)]">{r.symbol}</p>
+                        <p className="text-[10px] text-[var(--text-muted)]">{r.shortname}</p>
+                      </div>
+                      <span className="text-[10px] text-[var(--text-muted)]">
+                        {r.exchange}
+                        {r.optionType ? ` · ${r.optionType}` : ""}
+                        {typeof r.strike === "number" ? ` · ${r.strike}` : ""}
+                      </span>
+                    </button>
                 );
               })}
+            </div>
             </div>
           )}
         </div>

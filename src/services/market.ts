@@ -133,7 +133,7 @@ export async function getQuotes(symbols: string[]): Promise<NormalizedQuote[]> {
       trailingPE: 0,
       epsTrailingTwelveMonths: 0,
     }));
-  });
+  }, { serveStaleOnError: true, maxStaleMs: 120_000 });
 }
 
 // ── 2. Option Chain ─────────────────────────────────────────────────────────
@@ -171,7 +171,7 @@ export async function getOptionChain(
       exchange: upstoxChain.exchange,
       synthetic: false,
     };
-  });
+  }, { serveStaleOnError: true, maxStaleMs: 300_000 });
 }
 
 // ── 3. Expiry Dates ─────────────────────────────────────────────────────────
@@ -183,7 +183,7 @@ export async function getExpiryDates(symbol: string): Promise<string[]> {
   return expiryCache.getOrFetch(cacheKey, async () => {
     const chain = await fetchUpstoxOptionChain(symbol);
     return chain.expirationDates;
-  });
+  }, { serveStaleOnError: true, maxStaleMs: 600_000 });
 }
 
 // ── 4. Chart Data ───────────────────────────────────────────────────────────
@@ -232,5 +232,5 @@ export async function getChartData(
       close: c.close,
       volume: c.volume,
     }));
-  });
+  }, { serveStaleOnError: true, maxStaleMs: 300_000 });
 }

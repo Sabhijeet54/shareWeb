@@ -15,6 +15,8 @@
 
 import { NextRequest } from "next/server";
 import { dataPump } from "@/lib/dataPump";
+import { instrumentManager } from "@/lib/instruments";
+import { logEvent } from "@/lib/logger";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -30,6 +32,16 @@ export async function GET(req: NextRequest) {
     return new Response("Missing ?symbols= parameter", { status: 400 });
   }
 
+  await instrumentManager.ensureLoaded();
+  const validSymbols = symbols.filter((s) => instrumentManager.has(s));
+  const invalidSymbols = symbols.filter((s) => !instrumentManager.has(s));
+  if (invalidSymbols.length > 0) {
+    logEvent("warn", "ws.stream_invalid_symbols", { invalidSymbols, total: symbols.length });
+  }
+  if (validSymbols.length === 0) {
+    return new Response("No valid symbols for streaming", { status: 400 });
+  }
+
   const encoder = new TextEncoder();
   const clientId = crypto.randomUUID();
 
@@ -39,7 +51,7 @@ export async function GET(req: NextRequest) {
       controller.enqueue(encoder.encode(": connected\n\n"));
 
       // Subscribe to the singleton data pump
-      dataPump.subscribe(clientId, symbols, (data) => {
+      dataPump.subscribe(clientId, validSymbols, (data) => {
         try {
           const payload = `data: ${JSON.stringify(data)}\n\n`;
           controller.enqueue(encoder.encode(payload));

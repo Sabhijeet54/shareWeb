@@ -1,275 +1,439 @@
-// ─── Dynamic Upstox Instrument Loader ────────────────────────────────────────
-// Downloads the Upstox instruments master file at startup and builds
-// dynamic maps for instrument resolution. ZERO hardcoded ISINs or keys.
-//
-// Maps built:
-//   symbolMap:      appSymbol → instrumentKey  ("RELIANCE" → "NSE_EQ|INE002A01018")
-//   reverseMap:     instrumentKey → appSymbol   (reverse lookup)
-//   responseKeyMap: responseKey → appSymbol     ("NSE_EQ:RELIANCE" → "RELIANCE")
-//   optionSymbolMap: appSymbol → underlying     ("NIFTY 50" → "NIFTY")
-//
-// Architecture:
-//   toUpstoxKey("RELIANCE") → InstrumentLoader.resolve("RELIANCE")
-//     → (map loaded? return "NSE_EQ|INE002A01018")
-//     → (cold? download master, build map, return key)
-// ─────────────────────────────────────────────────────────────────────────────
-
 import { gunzipSync } from "zlib";
 
-// ── Types ────────────────────────────────────────────────────────────────────
+type Exchange = "NSE" | "BSE" | "MCX";
+
+type QuoteType = "EQUITY" | "INDEX" | "OPTION" | "FUTURE" | "OTHER";
 
 interface UpstoxInstrument {
   instrument_key: string;
   trading_symbol: string;
-  name: string;
-  instrument_type: string;
-  segment: string;
-  exchange: string;
+  name?: string;
+  instrument_type?: string;
+  segment?: string;
+  exchange?: string;
   isin?: string;
+  exchange_token?: string;
   lot_size?: number;
   tick_size?: number;
-  exchange_token?: string;
   underlying_key?: string;
   underlying_symbol?: string;
+  strike_price?: number;
+  expiry?: string | number;
 }
 
-// ── Master URLs (Upstox publishes daily) ─────────────────────────────────────
+export interface SearchInstrumentResult {
+  symbol: string;
+  shortname: string;
+  longname: string;
+  exchange: string;
+  exchDisp: string;
+  quoteType: QuoteType;
+  industry: string;
+  sector: string;
+  instrumentKey: string;
+  instrumentType: string;
+  expiry?: string;
+  strike?: number;
+  optionType?: "CE" | "PE";
+  underlyingSymbol?: string;
+}
 
-const MASTER_URLS: Record<string, string> = {
+interface SearchDoc {
+  symbol: string;
+  shortname: string;
+  longname: string;
+  exchange: string;
+  exchDisp: string;
+  quoteType: QuoteType;
+  industry: string;
+  sector: string;
+  instrumentKey: string;
+  instrumentType: string;
+  expiry?: string;
+  strike?: number;
+  optionType?: "CE" | "PE";
+  underlyingSymbol?: string;
+  searchBlob: string;
+}
+
+const MASTER_URLS: Record<Exchange, string> = {
   NSE: "https://assets.upstox.com/market-quote/instruments/exchange/NSE.json.gz",
   BSE: "https://assets.upstox.com/market-quote/instruments/exchange/BSE.json.gz",
+  MCX: "https://assets.upstox.com/market-quote/instruments/exchange/MCX.json.gz",
 };
 
-const REFRESH_INTERVAL = 24 * 60 * 60 * 1000; // 24 hours
+const REFRESH_INTERVAL = 6 * 60 * 60 * 1000;
 
-// ── Loader ───────────────────────────────────────────────────────────────────
+function norm(value: string): string {
+  return value.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+}
 
-class InstrumentLoader {
-  // appSymbol → instrumentKey (e.g. "RELIANCE" → "NSE_EQ|INE002A01018")
-  private symbolMap = new Map<string, string>();
-  // instrumentKey → appSymbol (reverse, for WebSocket feeds)
-  private reverseMap = new Map<string, string>();
-  // Upstox response key → appSymbol (e.g. "NSE_EQ:RELIANCE" → "RELIANCE")
-  // Upstox returns "EXCHANGE:TRADING_SYMBOL" in responses, NOT the ISIN key
-  private responseKeyMap = new Map<string, string>();
-  // name → tradingSymbol (for fuzzy search)
-  private nameMap = new Map<string, string>();
-  // appSymbol → underlying option symbol (e.g. "NIFTY 50" → "NIFTY")
-  // Built dynamically from derivative instruments in master file
+function compact(value: string): string {
+  return value.toLowerCase().replace(/[^a-z0-9]+/g, "");
+}
+
+function uniqTokens(value: string): string[] {
+  const parts = norm(value).split(/\s+/).filter(Boolean);
+  return [...new Set(parts)];
+}
+
+function quoteTypeFromInstrumentType(type: string): QuoteType {
+  if (type === "EQ") return "EQUITY";
+  if (type === "INDEX") return "INDEX";
+  if (type === "CE" || type === "PE") return "OPTION";
+  if (type === "FUT") return "FUTURE";
+  return "OTHER";
+}
+
+function toExpiryDate(expiry?: string | number): Date | null {
+  if (!expiry) return null;
+  if (typeof expiry === "number") {
+    const fromEpoch = expiry > 1e12 ? new Date(expiry) : new Date(expiry * 1000);
+    return Number.isNaN(fromEpoch.getTime()) ? null : fromEpoch;
+  }
+  const fromText = new Date(`${expiry}T00:00:00Z`);
+  if (!Number.isNaN(fromText.getTime())) return fromText;
+  const fromDirect = new Date(expiry);
+  if (!Number.isNaN(fromDirect.getTime())) return fromDirect;
+  return null;
+}
+
+function normalizedExpiry(expiry?: string | number): string | undefined {
+  const d = toExpiryDate(expiry);
+  if (!d) return undefined;
+  const y = d.getUTCFullYear();
+  const m = String(d.getUTCMonth() + 1).padStart(2, "0");
+  const day = String(d.getUTCDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+function isExpired(expiry?: string | number): boolean {
+  const d = toExpiryDate(expiry);
+  if (!d) return false;
+  const now = new Date();
+  const todayUtc = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
+  return d.getTime() < todayUtc;
+}
+
+class InstrumentManager {
+  private symbolToKey = new Map<string, string>();
+  private upperSymbolToSymbol = new Map<string, string>();
+  private keyToSymbol = new Map<string, string>();
+  private responseKeyToSymbol = new Map<string, string>();
   private optionSymbolMap = new Map<string, string>();
 
-  private lastLoadTime = 0;
-  private loading: Promise<void> | null = null;
-  private loaded = false;
+  private searchDocs: SearchDoc[] = [];
+  private tokenIndex = new Map<string, number[]>();
 
-  /** Ensure instruments are loaded. Blocks until ready. */
+  private loaded = false;
+  private lastLoadedAt = 0;
+  private loading: Promise<void> | null = null;
+
   async ensureLoaded(): Promise<void> {
     const now = Date.now();
-    if (this.loaded && now - this.lastLoadTime < REFRESH_INTERVAL) return;
-    if (this.loading) { await this.loading; return; }
-
-    this.loading = this.load();
+    if (this.loaded && now - this.lastLoadedAt < REFRESH_INTERVAL) return;
+    if (this.loading) {
+      await this.loading;
+      return;
+    }
+    this.loading = this.loadAll();
     await this.loading;
     this.loading = null;
   }
 
-  /** Resolve app symbol → Upstox instrument key. Returns undefined if not found. */
   getKey(symbol: string): string | undefined {
-    return this.symbolMap.get(symbol);
+    const direct = this.symbolToKey.get(symbol);
+    if (direct) return direct;
+    const canonical = this.upperSymbolToSymbol.get(symbol.toUpperCase());
+    if (!canonical) return undefined;
+    return this.symbolToKey.get(canonical);
   }
 
-  /** Resolve Upstox instrument key → app trading symbol. */
   getSymbol(instrumentKey: string): string | undefined {
-    return this.reverseMap.get(instrumentKey);
+    return this.keyToSymbol.get(instrumentKey);
   }
 
-  /**
-   * Resolve Upstox response key → app symbol.
-   * Upstox returns keys like "NSE_EQ:RELIANCE" in response,
-   * but we send "NSE_EQ|INE002A01018" in request.
-   */
   getSymbolByResponseKey(responseKey: string): string | undefined {
-    return this.responseKeyMap.get(responseKey);
+    return this.responseKeyToSymbol.get(responseKey);
   }
 
-  /** Get the option underlying symbol (e.g. "NIFTY 50" → "NIFTY") */
   getOptionSymbol(symbol: string): string | undefined {
-    return this.optionSymbolMap.get(symbol);
+    const direct = this.optionSymbolMap.get(symbol);
+    if (direct) return direct;
+    const canonical = this.upperSymbolToSymbol.get(symbol.toUpperCase());
+    if (!canonical) return undefined;
+    return this.optionSymbolMap.get(canonical);
   }
 
-  /** Check if an instrument exists in our map. */
   has(symbol: string): boolean {
-    return this.symbolMap.has(symbol);
+    return Boolean(this.getKey(symbol));
   }
 
-  /** Get all loaded symbols → keys. */
   getAllKeys(): Map<string, string> {
-    return new Map(this.symbolMap);
+    return new Map(this.symbolToKey);
   }
 
-  // ── Internal ──────────────────────────────────────────────────────────────
+  search(query: string, limit = 20): SearchInstrumentResult[] {
+    const q = query.trim();
+    if (!q) return [];
 
-  private async load(): Promise<void> {
-    console.log("[Instruments] Loading Upstox master files...");
-    const start = Date.now();
+    const qNorm = norm(q);
+    const qCompact = compact(q);
+    const qTokens = uniqTokens(q);
+    const qHasStrike = /\b\d{3,6}(?:\.\d+)?\b/.test(qNorm);
+    const qWantsCall = /\bce\b|\bcall\b/.test(qNorm);
+    const qWantsPut = /\bpe\b|\bput\b/.test(qNorm);
 
-    try {
-      // Load NSE + BSE in parallel
-      const [nseData, bseData] = await Promise.allSettled([
-        this.fetchExchange("NSE"),
-        this.fetchExchange("BSE"),
-      ]);
+    const candidates = this.getCandidateIndexes(qTokens, qNorm);
+    const scored: Array<{ index: number; score: number }> = [];
 
-      if (nseData.status === "fulfilled") this.indexInstruments(nseData.value);
-      if (bseData.status === "fulfilled") this.indexInstruments(bseData.value);
+    for (const idx of candidates) {
+      const doc = this.searchDocs[idx];
+      if (!doc) continue;
 
-      // Build app-symbol aliases (e.g. "NIFTY 50" → same key as "NIFTY", "BANK NIFTY" → "BANKNIFTY")
-      this.buildAliases();
+      let score = 0;
+      const symbolNorm = norm(doc.symbol);
+      const symbolCompact = compact(doc.symbol);
 
-      this.loaded = true;
-      this.lastLoadTime = Date.now();
+      if (symbolCompact === qCompact) score += 120;
+      else if (symbolCompact.startsWith(qCompact)) score += 90;
+      else if (symbolCompact.includes(qCompact)) score += 55;
 
-      const eqCount = [...this.symbolMap.values()].filter(k => k.includes("_EQ|")).length;
-      const idxCount = [...this.symbolMap.values()].filter(k => k.includes("_INDEX|")).length;
-      console.log(
-        `[Instruments] Loaded ${this.symbolMap.size} instruments (${eqCount} EQ, ${idxCount} INDEX) in ${Date.now() - start}ms`,
-      );
-    } catch (err) {
-      console.error("[Instruments] Failed to load:", String(err));
-      this.loaded = true;
-      this.lastLoadTime = Date.now();
+      if (doc.searchBlob.includes(qNorm)) score += 45;
+
+      if (qTokens.length > 0) {
+        const matched = qTokens.filter((t) => doc.searchBlob.includes(t)).length;
+        score += matched * 12;
+        if (matched === qTokens.length) score += 20;
+      }
+
+      if (doc.quoteType === "OPTION") {
+        score += 8;
+        if (qHasStrike && doc.strike != null && qNorm.includes(String(Math.trunc(doc.strike)))) score += 30;
+        if (qWantsCall && doc.optionType === "CE") score += 22;
+        if (qWantsPut && doc.optionType === "PE") score += 22;
+      }
+
+      if (doc.quoteType === "EQUITY" && !qHasStrike) score += 5;
+      if (doc.quoteType === "INDEX") score += 3;
+
+      if (score > 0) scored.push({ index: idx, score });
     }
+
+    scored.sort((a, b) => b.score - a.score);
+
+    const out: SearchInstrumentResult[] = [];
+    const seen = new Set<string>();
+    for (const { index } of scored) {
+      if (out.length >= limit) break;
+      const doc = this.searchDocs[index];
+      if (!doc || seen.has(doc.instrumentKey)) continue;
+      seen.add(doc.instrumentKey);
+      out.push({
+        symbol: doc.symbol,
+        shortname: doc.shortname,
+        longname: doc.longname,
+        exchange: doc.exchange,
+        exchDisp: doc.exchDisp,
+        quoteType: doc.quoteType,
+        industry: doc.industry,
+        sector: doc.sector,
+        instrumentKey: doc.instrumentKey,
+        instrumentType: doc.instrumentType,
+        expiry: doc.expiry,
+        strike: doc.strike,
+        optionType: doc.optionType,
+        underlyingSymbol: doc.underlyingSymbol,
+      });
+    }
+
+    return out;
   }
 
-  private async fetchExchange(exchange: string): Promise<UpstoxInstrument[]> {
-    const url = MASTER_URLS[exchange];
-    if (!url) return [];
+  private getCandidateIndexes(tokens: string[], qNorm: string): Set<number> {
+    const candidates = new Set<number>();
 
+    for (const token of tokens) {
+      const arr = this.tokenIndex.get(token);
+      if (!arr) continue;
+      for (const idx of arr) candidates.add(idx);
+    }
+
+    if (candidates.size === 0) {
+      const fallbackToken = qNorm.split(/\s+/)[0];
+      if (fallbackToken) {
+        const arr = this.tokenIndex.get(fallbackToken);
+        if (arr) for (const idx of arr) candidates.add(idx);
+      }
+    }
+
+    if (candidates.size === 0) {
+      const max = Math.min(this.searchDocs.length, 5000);
+      for (let i = 0; i < max; i++) candidates.add(i);
+    }
+
+    return candidates;
+  }
+
+  private async loadAll(): Promise<void> {
+    const start = Date.now();
+    const exchanges: Exchange[] = ["NSE", "BSE", "MCX"];
+
+    this.symbolToKey.clear();
+    this.upperSymbolToSymbol.clear();
+    this.keyToSymbol.clear();
+    this.responseKeyToSymbol.clear();
+    this.optionSymbolMap.clear();
+    this.searchDocs = [];
+    this.tokenIndex.clear();
+
+    const all: UpstoxInstrument[] = [];
+    const loadedExchanges: string[] = [];
+
+    await Promise.all(exchanges.map(async (ex) => {
+      try {
+        const items = await this.fetchExchange(ex);
+        all.push(...items);
+        loadedExchanges.push(ex);
+      } catch (err) {
+        console.warn(`[Instruments] ${ex} master load failed: ${String(err)}`);
+      }
+    }));
+
+    const underlyingByKey = new Map<string, string>();
+
+    for (const inst of all) {
+      const symbol = inst.trading_symbol?.trim();
+      const key = inst.instrument_key?.trim();
+      if (!symbol || !key) continue;
+
+      const type = (inst.instrument_type ?? "").toUpperCase();
+      const quoteType = quoteTypeFromInstrumentType(type);
+      const exchange = (inst.exchange ?? key.split("_")[0] ?? "NSE").toUpperCase();
+      const segment = key.split("|")[0];
+      const displayFromKey = key.includes("|") ? key.split("|")[1] : "";
+
+      if (!this.symbolToKey.has(symbol)) this.symbolToKey.set(symbol, key);
+      if (!this.upperSymbolToSymbol.has(symbol.toUpperCase())) this.upperSymbolToSymbol.set(symbol.toUpperCase(), symbol);
+      if (!this.keyToSymbol.has(key)) this.keyToSymbol.set(key, symbol);
+
+      this.responseKeyToSymbol.set(`${segment}:${symbol}`, symbol);
+      if (displayFromKey && displayFromKey !== symbol) {
+        this.responseKeyToSymbol.set(`${segment}:${displayFromKey}`, symbol);
+      }
+
+      // Dynamic alias from index display names (e.g. NIFTY 50, NIFTY BANK)
+      if (type === "INDEX" && displayFromKey) {
+        const alias = displayFromKey.toUpperCase();
+        if (!this.symbolToKey.has(alias)) this.symbolToKey.set(alias, key);
+        if (!this.upperSymbolToSymbol.has(alias)) this.upperSymbolToSymbol.set(alias, alias);
+
+        // Additional dynamic alias: BANKNIFTY -> BANK NIFTY, FINNIFTY -> FIN NIFTY
+        if (/^[A-Z]+NIFTY$/.test(symbol)) {
+          const spaced = `${symbol.replace(/NIFTY$/, "")} NIFTY`.trim();
+          if (!this.symbolToKey.has(spaced)) this.symbolToKey.set(spaced, key);
+          if (!this.upperSymbolToSymbol.has(spaced.toUpperCase())) this.upperSymbolToSymbol.set(spaced.toUpperCase(), spaced);
+        }
+      }
+
+      if (inst.underlying_key && inst.underlying_symbol) {
+        underlyingByKey.set(inst.underlying_key, inst.underlying_symbol);
+      }
+
+      const strike = typeof inst.strike_price === "number" ? inst.strike_price : undefined;
+      const expiry = normalizedExpiry(inst.expiry);
+      const optionType = type === "CE" || type === "PE" ? type : undefined;
+      const underlyingSymbol = inst.underlying_symbol;
+
+      if ((type === "CE" || type === "PE" || type === "FUT") && isExpired(expiry)) {
+        continue;
+      }
+
+      const searchableParts = [
+        symbol,
+        inst.name ?? "",
+        exchange,
+        type,
+        displayFromKey,
+        underlyingSymbol ?? "",
+        expiry ?? "",
+        strike != null ? String(Math.trunc(strike)) : "",
+        optionType ?? "",
+      ].filter(Boolean);
+
+      const searchBlob = norm(searchableParts.join(" "));
+
+      const doc: SearchDoc = {
+        symbol,
+        shortname: inst.name?.trim() || symbol,
+        longname: inst.name?.trim() || symbol,
+        exchange,
+        exchDisp: `${exchange} ${type}`,
+        quoteType,
+        industry: "",
+        sector: "",
+        instrumentKey: key,
+        instrumentType: type,
+        expiry,
+        strike,
+        optionType,
+        underlyingSymbol,
+        searchBlob,
+      };
+
+      const idx = this.searchDocs.push(doc) - 1;
+      for (const token of uniqTokens(searchableParts.join(" "))) {
+        const arr = this.tokenIndex.get(token);
+        if (arr) arr.push(idx);
+        else this.tokenIndex.set(token, [idx]);
+      }
+    }
+
+    // Build option underlying map for option chain lookups.
+    // Map all aliases that point to same underlying key.
+    for (const [underlyingKey, underlyingSymbol] of underlyingByKey) {
+      const canonical = this.keyToSymbol.get(underlyingKey);
+      if (!canonical) continue;
+
+      for (const [aliasSymbol, aliasKey] of this.symbolToKey) {
+        if (aliasKey === underlyingKey) {
+          this.optionSymbolMap.set(aliasSymbol, underlyingSymbol);
+        }
+      }
+      this.optionSymbolMap.set(canonical, underlyingSymbol);
+    }
+
+    this.loaded = true;
+    this.lastLoadedAt = Date.now();
+
+    console.log(
+      `[Instruments] Loaded ${this.searchDocs.length} contracts from ${loadedExchanges.join(",")} in ${Date.now() - start}ms`,
+    );
+  }
+
+  private async fetchExchange(exchange: Exchange): Promise<UpstoxInstrument[]> {
+    const url = MASTER_URLS[exchange];
     const resp = await fetch(url, {
       headers: { "User-Agent": "Mozilla/5.0", "Accept-Encoding": "gzip" },
     });
-    if (!resp.ok) throw new Error(`HTTP ${resp.status} for ${exchange}`);
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
 
-    const buffer = Buffer.from(await resp.arrayBuffer());
-
-    // Try gunzip (the file is .json.gz)
-    let jsonStr: string;
+    const rawBuffer = Buffer.from(await resp.arrayBuffer());
+    let jsonString = "";
     try {
-      jsonStr = gunzipSync(buffer).toString("utf-8");
+      jsonString = gunzipSync(rawBuffer).toString("utf-8");
     } catch {
-      // Maybe it was already decompressed by fetch
-      jsonStr = buffer.toString("utf-8");
+      jsonString = rawBuffer.toString("utf-8");
     }
-
-    return JSON.parse(jsonStr) as UpstoxInstrument[];
-  }
-
-  private indexInstruments(instruments: UpstoxInstrument[]): void {
-    // Track underlying symbols for building optionSymbolMap
-    const underlyingSymbols = new Map<string, string>(); // underlying_key → underlying_symbol
-
-    for (const inst of instruments) {
-      const ts = inst.trading_symbol;
-      const key = inst.instrument_key;
-      if (!ts || !key) continue;
-
-      const type = inst.instrument_type;
-
-      // Index equities (EQ) and indices (INDEX) from master file
-      if (type === "EQ" || type === "INDEX") {
-        this.symbolMap.set(ts, key);
-        this.reverseMap.set(key, ts);
-
-        // Build response key mappings.
-        // Upstox response keys use ":" separator, format varies:
-        //   Equities: "NSE_EQ:RELIANCE" (uses trading_symbol)
-        //   Indices:  "NSE_INDEX:Nifty 50" (uses display name from instrument_key)
-        const segment = key.split("|")[0]; // e.g. "NSE_EQ" or "NSE_INDEX"
-        const displayName = key.split("|")[1]; // e.g. "INE002A01018" or "Nifty 50"
-        if (segment) {
-          // Map by trading symbol (works for equities)
-          this.responseKeyMap.set(`${segment}:${ts}`, ts);
-          // Also map by display name from key (works for indices)
-          if (displayName && displayName !== ts) {
-            this.responseKeyMap.set(`${segment}:${displayName}`, ts);
-          }
-        }
-
-        // Also index by name for fuzzy lookup
-        if (inst.name) {
-          this.nameMap.set(inst.name.toUpperCase(), ts);
-        }
-      }
-
-      // Collect underlying symbols from derivative instruments for option chain mapping
-      if ((type === "CE" || type === "PE" || type === "FUT") && inst.underlying_key && inst.underlying_symbol) {
-        underlyingSymbols.set(inst.underlying_key, inst.underlying_symbol);
-      }
-    }
-
-    // Build optionSymbolMap: app symbol (trading_symbol of underlying) → underlying_symbol
-    // e.g. "NIFTY" (trading_symbol for NSE_INDEX|Nifty 50) → "NIFTY" (underlying_symbol from options)
-    for (const [underlyingKey, underlyingSym] of underlyingSymbols) {
-      // Find the app trading symbol for this underlying key
-      const appSymbol = this.reverseMap.get(underlyingKey);
-      if (appSymbol) {
-        this.optionSymbolMap.set(appSymbol, underlyingSym);
-      }
-    }
-  }
-
-  /**
-   * Build aliases so the app can use friendly names like "NIFTY 50", "BANK NIFTY"
-   * while the master file uses "NIFTY", "BANKNIFTY" as trading symbols.
-   * 
-   * This reads the instrument_key's display name to create aliases.
-   * e.g. instrument_key "NSE_INDEX|Nifty 50" with trading_symbol "NIFTY"
-   *   → alias "NIFTY 50" → same key
-   */
-  private buildAliases(): void {
-    // For INDEX instruments, the instrument_key contains the display name after "|"
-    // e.g. "NSE_INDEX|Nifty 50" — extract "Nifty 50" → "NIFTY 50" as alias
-    for (const [ts, key] of this.symbolMap) {
-      if (!key.includes("_INDEX|")) continue;
-
-      const displayName = key.split("|")[1]; // e.g. "Nifty 50", "Nifty Bank"
-      if (!displayName) continue;
-
-      const upperDisplay = displayName.toUpperCase(); // "NIFTY 50"
-
-      // Add alias if different from trading symbol
-      if (upperDisplay !== ts && !this.symbolMap.has(upperDisplay)) {
-        this.symbolMap.set(upperDisplay, key);
-        this.reverseMap.set(key, ts); // Keep reverse pointing to original trading_symbol
-        // Response key for alias
-        const segment = key.split("|")[0];
-        if (segment) {
-          this.responseKeyMap.set(`${segment}:${ts}`, ts);
-        }
-      }
-    }
-
-    // Common app aliases that may not match index display names exactly
-    // e.g. "BANK NIFTY" → same as "BANKNIFTY" or "NIFTY BANK"
-    const aliasPatterns: [string, string[]][] = [
-      // [masterTradingSymbol, [...appAliases]]
-      ["BANKNIFTY", ["BANK NIFTY"]],
-      ["FINNIFTY", ["NIFTY FINSERV", "FIN NIFTY"]],
-      ["MIDCPNIFTY", ["MIDCAP NIFTY"]],
-    ];
-
-    for (const [masterTs, aliases] of aliasPatterns) {
-      const key = this.symbolMap.get(masterTs);
-      if (!key) continue;
-      for (const alias of aliases) {
-        if (!this.symbolMap.has(alias)) {
-          this.symbolMap.set(alias, key);
-        }
-      }
-    }
+    return JSON.parse(jsonString) as UpstoxInstrument[];
   }
 }
 
-// ── Singleton (HMR-safe) ─────────────────────────────────────────────────────
-const g = globalThis as unknown as { __instrumentLoader?: InstrumentLoader };
-export const instrumentLoader = (g.__instrumentLoader ??= new InstrumentLoader());
+const g = globalThis as unknown as {
+  __instrumentManager?: InstrumentManager;
+};
+
+export const instrumentManager = (g.__instrumentManager ??= new InstrumentManager());
+
+// Backward-compatible export name for existing imports.
+export const instrumentLoader = instrumentManager;

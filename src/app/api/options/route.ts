@@ -7,6 +7,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { getOptionChain } from "@/services/market";
+import { logEvent } from "@/lib/logger";
 
 export async function GET(req: NextRequest) {
   const sp = req.nextUrl.searchParams;
@@ -24,10 +25,25 @@ export async function GET(req: NextRequest) {
       headers: { "Cache-Control": "no-cache, no-store, must-revalidate" },
     });
   } catch (err) {
-    console.error("[Options API] Error:", String(err));
+    logEvent("error", "api.options.failed", { symbol, dateParam, error: String(err) });
     return NextResponse.json(
-      { error: "Failed to fetch option chain data" },
-      { status: 502 },
+      {
+        symbol,
+        underlyingName: symbol,
+        spotPrice: 0,
+        atmStrike: 0,
+        pcr: 0,
+        maxPainStrike: 0,
+        expiryStr: "",
+        expirationDates: [],
+        chain: [],
+        totalCeOI: 0,
+        totalPeOI: 0,
+        exchange: "NSE",
+        synthetic: false,
+        error: "Temporary upstream issue. Showing empty chain.",
+      },
+      { status: 200 },
     );
   }
 }

@@ -9,6 +9,8 @@
 
 import upstoxClient, { resolveUpstoxKey, toUpstoxOptionSymbol, isUpstoxConfigured, fromUpstoxResponseKey } from "@/lib/upstox";
 import { instrumentLoader } from "@/lib/instruments";
+import { logEvent } from "@/lib/logger";
+import type { AxiosRequestConfig } from "axios";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -87,6 +89,41 @@ function formatVolume(n: number): string {
   return String(n);
 }
 
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function shouldRetry(error: unknown): boolean {
+  const e = error as { response?: { status?: number }; code?: string; message?: string };
+  const status = e.response?.status;
+  if (status && [429, 500, 502, 503, 504].includes(status)) return true;
+  const code = e.code ?? "";
+  if (["ECONNABORTED", "ETIMEDOUT", "ENOTFOUND", "ECONNRESET"].includes(code)) return true;
+  const msg = (e.message ?? "").toLowerCase();
+  return msg.includes("timeout") || msg.includes("network");
+}
+
+async function getWithRetry<T>(
+  url: string,
+  config?: AxiosRequestConfig,
+  attempts = 3,
+): Promise<T> {
+  let lastError: unknown;
+  for (let attempt = 1; attempt <= attempts; attempt++) {
+    try {
+      const resp = await upstoxClient.get(url, { timeout: 10_000, ...(config ?? {}) });
+      return resp.data as T;
+    } catch (err) {
+      lastError = err;
+      if (!shouldRetry(err) || attempt >= attempts) break;
+      const backoffMs = 300 * 2 ** (attempt - 1) + Math.floor(Math.random() * 100);
+      logEvent("warn", "provider.retry", { url, attempt, backoffMs, error: String(err) });
+      await delay(backoffMs);
+    }
+  }
+  throw lastError;
+}
+
 // ─── 1. Live Quotes / LTP ───────────────────────────────────────────────────
 
 /**
@@ -123,7 +160,7 @@ export async function fetchUpstoxQuotes(
     const keyParam = batch.map((r) => r.key).join(",");
 
     try {
-      const { data } = await upstoxClient.get("/market-quote/quotes", {
+      const data = await getWithRetry<any>("/market-quote/quotes", {
         params: { instrument_key: keyParam },
       });
 
@@ -195,7 +232,7 @@ export async function fetchUpstoxQuotes(
         });
       }
     } catch (err) {
-      console.warn(`[UpstoxService] Batch quote fetch failed:`, String(err));
+      logEvent("warn", "provider.quotes_batch_failed", { symbols: batch.map((b) => b.sym), error: String(err) });
       // Don't throw — partial results are better than no results
     }
   }
@@ -225,7 +262,7 @@ export async function fetchUpstoxLTP(
   const keyParam = resolved.map((r) => r.key).join(",");
 
   try {
-    const { data } = await upstoxClient.get("/market-quote/ltp", {
+    const data = await getWithRetry<any>("/market-quote/ltp", {
       params: { instrument_key: keyParam },
     });
 
@@ -247,7 +284,7 @@ export async function fetchUpstoxLTP(
 
     return result;
   } catch (err) {
-    console.warn("[UpstoxService] LTP fetch failed:", String(err));
+    logEvent("warn", "provider.ltp_failed", { symbols, error: String(err) });
     return {};
   }
 }
@@ -271,7 +308,7 @@ export async function fetchUpstoxOptionChain(
   if (!instrumentKey) throw new Error(`Unknown instrument: ${symbol}`);
 
   // Step 1: Get expiry dates
-  const expiryResp = await upstoxClient.get("/option/contract", {
+  const expiryResp = await getWithRetry<any>("/option/contract", {
     params: { instrument_key: instrumentKey },
   });
 
@@ -284,7 +321,7 @@ export async function fetchUpstoxOptionChain(
   const selectedExpiry = expiryDate ?? allExpiries[0] ?? "";
 
   // Step 2: Fetch option chain for selected expiry
-  const chainResp = await upstoxClient.get("/option/chain", {
+  const chainResp = await getWithRetry<any>("/option/chain", {
     params: {
       instrument_key: instrumentKey,
       expiry_date: selectedExpiry,
@@ -435,7 +472,7 @@ export async function fetchUpstoxCandles(
   const upstoxInterval = intervalMap[interval] ?? "day";
 
   const url = `/historical-candle/${instrumentKey}/${upstoxInterval}/${toDate}/${fromDate}`;
-  const { data } = await upstoxClient.get(url);
+  const data = await getWithRetry<any>(url);
 
   const candles: unknown[][] = data?.data?.candles ?? [];
 
@@ -474,7 +511,7 @@ export async function fetchUpstoxIntradayCandles(
   const upstoxInterval = intervalMap[interval] ?? "1minute";
 
   const url = `/historical-candle/intraday/${instrumentKey}/${upstoxInterval}`;
-  const { data } = await upstoxClient.get(url);
+  const data = await getWithRetry<any>(url);
 
   const candles: unknown[][] = data?.data?.candles ?? [];
 

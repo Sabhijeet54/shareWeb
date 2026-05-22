@@ -8,6 +8,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { getQuotes } from "@/services/market";
+import { logEvent } from "@/lib/logger";
 
 export async function GET(req: NextRequest) {
   const symbolsParam = req.nextUrl.searchParams.get("symbols") ?? "";
@@ -27,7 +28,7 @@ export async function GET(req: NextRequest) {
       { headers: { "Cache-Control": "no-cache, no-store, must-revalidate" } },
     );
   } catch (err) {
-    console.error("[Quote API] Error:", String(err));
+    logEvent("error", "api.quote.failed", { symbols, error: String(err) });
     return NextResponse.json(
       { quoteResponse: { result: [] }, error: String(err) },
       { status: 500 },

@@ -39,6 +39,13 @@ export class ServerCache<T> {
     return entry.data;
   }
 
+  getStale(key: string, maxAgeMs = Infinity): T | null {
+    const entry = this.store.get(key);
+    if (!entry) return null;
+    if (Date.now() - entry.ts > maxAgeMs) return null;
+    return entry.data;
+  }
+
   set(key: string, data: T): void {
     this.store.set(key, { data, ts: Date.now() });
     if (this.store.size > this.maxEntries) this.evict();
@@ -84,7 +91,11 @@ export class CacheManager<T> {
   }
 
   /** Get cached data, or fetch it exactly once (deduplicating concurrent requests). */
-  async getOrFetch(key: string, fetcher: () => Promise<T>): Promise<T> {
+  async getOrFetch(
+    key: string,
+    fetcher: () => Promise<T>,
+    options?: { serveStaleOnError?: boolean; maxStaleMs?: number },
+  ): Promise<T> {
     // 1. Check cache
     const cached = this.cache.get(key);
     if (cached !== null) return cached;
@@ -102,6 +113,10 @@ export class CacheManager<T> {
       })
       .catch((err) => {
         this.pending.delete(key);
+        if (options?.serveStaleOnError) {
+          const stale = this.cache.getStale(key, options.maxStaleMs ?? 60_000);
+          if (stale !== null) return stale;
+        }
         throw err;
       });
 
@@ -119,6 +134,10 @@ export class CacheManager<T> {
 
   isPending(key: string): boolean {
     return this.pending.has(key);
+  }
+
+  getStale(key: string, maxAgeMs = Infinity): T | null {
+    return this.cache.getStale(key, maxAgeMs);
   }
 
   clear(): void {

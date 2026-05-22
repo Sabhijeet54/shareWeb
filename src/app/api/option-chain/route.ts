@@ -8,6 +8,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { getOptionChain } from "@/services/market";
+import { logEvent } from "@/lib/logger";
 
 interface CleanOption {
   strike: number;
@@ -38,8 +39,8 @@ export async function GET(req: NextRequest) {
 
     if (!chainData || chainData.chain.length === 0) {
       return NextResponse.json(
-        { error: "No option chain data available" },
-        { status: 502 },
+        { error: "No option chain data available", symbol, strikes: [], calls: [], puts: [], availableExpiries: [] },
+        { status: 200 },
       );
     }
 
@@ -101,10 +102,10 @@ export async function GET(req: NextRequest) {
       headers: { "Cache-Control": "no-cache, no-store, must-revalidate" },
     });
   } catch (err) {
-    console.error("[OptionChain API] Error:", String(err));
+    logEvent("error", "api.option_chain.failed", { symbol, expiry, error: String(err) });
     return NextResponse.json(
-      { error: "Failed to fetch option chain" },
-      { status: 502 },
+      { error: "Failed to fetch option chain", symbol, strikes: [], calls: [], puts: [], availableExpiries: [] },
+      { status: 200 },
     );
   }
 }

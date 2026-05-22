@@ -19,6 +19,7 @@ import {
   refreshUpstoxAccessToken,
 } from "@/lib/upstox";
 import { instrumentLoader } from "@/lib/instruments";
+import { logEvent } from "@/lib/logger";
 
 const REST_INTERVAL = 5_000; // REST poll interval
 
@@ -37,7 +38,8 @@ class DataPump {
   private ws: WebSocket | null = null;
   private wsConnecting = false;
   private wsConnected = false;
-  private wsGaveUp = false; // true if WS failed permanently — don't retry
+  private reconnectAttempts = 0;
+  private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
   private subscribedKeys = new Set<string>();
 
   // REST polling
@@ -71,6 +73,7 @@ class DataPump {
     for (const sym of symbols) {
       const key = await resolveUpstoxKey(sym);
       if (key) this.keyToSymbol.set(key, sym);
+      else logEvent("warn", "ws.invalid_symbol_subscription", { symbol: sym });
     }
   }
 
@@ -98,7 +101,7 @@ class DataPump {
     }
 
     // Try WebSocket for real-time (if not already given up)
-    if (!this.wsGaveUp && !this.wsConnected && !this.wsConnecting) {
+    if (!this.wsConnected && !this.wsConnecting) {
       this.connectWebSocket().catch(() => {});
     } else if (this.wsConnected) {
       this.updateWsSubscriptions().catch(() => {});
@@ -113,6 +116,11 @@ class DataPump {
     this.wsConnected = false;
     this.wsConnecting = false;
     this.subscribedKeys.clear();
+    this.reconnectAttempts = 0;
+    if (this.reconnectTimer) {
+      clearTimeout(this.reconnectTimer);
+      this.reconnectTimer = null;
+    }
 
     if (this.restTimer) {
       clearInterval(this.restTimer);
@@ -132,9 +140,9 @@ class DataPump {
         try {
           accessToken = await refreshUpstoxAccessToken();
         } catch {
-          console.warn("[DataPump] No usable Upstox access token for WebSocket.");
+          logEvent("warn", "ws.auth_token_unavailable");
           this.wsConnecting = false;
-          this.wsGaveUp = true;
+          this.scheduleReconnect("auth_token_unavailable");
           return;
         }
       }
@@ -178,16 +186,16 @@ class DataPump {
         wsUrl = json?.data?.authorizedRedirectUri;
       } else {
         const body = await resp.text().catch(() => "");
-        console.warn(`[DataPump] WebSocket auth failed: HTTP ${resp.status}`, body.substring(0, 200));
+        logEvent("warn", "ws.auth_failed", { status: resp.status, body: body.substring(0, 200) });
         this.wsConnecting = false;
-        this.wsGaveUp = true; // Don't keep retrying — REST is working
+        this.scheduleReconnect("auth_failed");
         return;
       }
 
       if (!wsUrl) {
-        console.warn("[DataPump] No WebSocket URL received — using REST only");
+        logEvent("warn", "ws.url_missing");
         this.wsConnecting = false;
-        this.wsGaveUp = true;
+        this.scheduleReconnect("url_missing");
         return;
       }
 
@@ -197,20 +205,16 @@ class DataPump {
       const ws = new WebSocket(wsUrl);
 
       ws.onopen = () => {
-        console.log("[DataPump] Upstox WebSocket v3 connected ✓");
+        logEvent("info", "ws.connected", { clients: this.clients.size });
         this.ws = ws;
         this.wsConnected = true;
         this.wsConnecting = false;
+        this.reconnectAttempts = 0;
+        if (this.reconnectTimer) {
+          clearTimeout(this.reconnectTimer);
+          this.reconnectTimer = null;
+        }
         this.updateWsSubscriptions();
-
-        // Once WS is delivering data, stop REST polling (wait 15s to confirm)
-        setTimeout(() => {
-          if (this.wsConnected && this.restTimer) {
-            clearInterval(this.restTimer);
-            this.restTimer = null;
-            console.log("[DataPump] REST polling stopped — WebSocket active");
-          }
-        }, 15_000);
       };
 
       ws.onmessage = (event) => {
@@ -223,11 +227,11 @@ class DataPump {
       };
 
       ws.onerror = () => {
-        console.warn("[DataPump] WebSocket error — REST is still active");
+        logEvent("warn", "ws.error");
       };
 
       ws.onclose = () => {
-        console.log("[DataPump] WebSocket closed");
+        logEvent("warn", "ws.closed", { code: "unknown" });
         this.ws = null;
         this.wsConnected = false;
         this.wsConnecting = false;
@@ -239,20 +243,31 @@ class DataPump {
           console.log("[DataPump] REST polling resumed");
         }
 
-        // Try reconnecting after 10s (if not given up)
-        if (this.clients.size > 0 && !this.wsGaveUp) {
-          setTimeout(() => {
-            if (this.clients.size > 0 && !this.wsConnected) {
-              this.connectWebSocket().catch(() => {});
-            }
-          }, 10_000);
+        if (this.clients.size > 0) {
+          this.scheduleReconnect("ws_closed");
         }
       };
     } catch (err) {
-      console.warn("[DataPump] WebSocket setup error:", String(err));
+      logEvent("warn", "ws.setup_error", { error: String(err) });
       this.wsConnecting = false;
-      // Don't give up — might be a transient network error
+      this.scheduleReconnect("setup_error");
     }
+  }
+
+  private scheduleReconnect(reason: string): void {
+    if (this.clients.size === 0) return;
+    if (this.reconnectTimer) return;
+
+    const delayMs = Math.min(30_000, 1000 * 2 ** this.reconnectAttempts);
+    this.reconnectAttempts += 1;
+
+    logEvent("warn", "ws.reconnect_scheduled", { reason, delayMs, attempt: this.reconnectAttempts });
+    this.reconnectTimer = setTimeout(() => {
+      this.reconnectTimer = null;
+      if (this.clients.size > 0 && !this.wsConnected && !this.wsConnecting) {
+        this.connectWebSocket().catch(() => {});
+      }
+    }, delayMs);
   }
 
   private async updateWsSubscriptions(): Promise<void> {
@@ -270,7 +285,10 @@ class DataPump {
     const newKeys: string[] = [];
     for (const sym of allSymbols) {
       const key = await resolveUpstoxKey(sym);
-      if (!key) continue;
+      if (!key) {
+        logEvent("warn", "ws.subscription_invalid", { symbol: sym });
+        continue;
+      }
       this.keyToSymbol.set(key, sym);
       if (!this.subscribedKeys.has(key)) {
         newKeys.push(key);
@@ -292,9 +310,10 @@ class DataPump {
 
     try {
       this.ws.send(subscribeMsg);
-      console.log(`[DataPump] Subscribed to ${newKeys.length} instruments via WebSocket`);
+      logEvent("info", "ws.subscribed", { count: newKeys.length });
     } catch (err) {
-      console.warn("[DataPump] WebSocket subscribe error:", String(err));
+      logEvent("warn", "ws.subscribe_error", { error: String(err) });
+      this.scheduleReconnect("subscribe_error");
     }
   }
 
@@ -405,7 +424,7 @@ class DataPump {
 
       this.broadcastToClients(bySymbol);
     } catch (err) {
-      console.error("[DataPump] REST pump error:", String(err));
+      logEvent("error", "rest.pump_error", { error: String(err) });
     } finally {
       this.pumping = false;
     }
