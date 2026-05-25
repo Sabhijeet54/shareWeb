@@ -55,7 +55,7 @@ export function OrdersPage() {
     <section className="space-y-3 rounded-[1.5rem] border border-[var(--card-border)] bg-[var(--card-bg)] p-5">
       <div>
         <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--accent-label)]">
-          Paper orders
+          Orders
         </p>
         <h2 className="mt-2 text-xl font-semibold text-[var(--text-primary)]">
           Executed Trades
@@ -64,7 +64,7 @@ export function OrdersPage() {
 
       {orders.length === 0 ? (
         <p className="rounded-2xl bg-[var(--background)]/80 p-4 text-sm text-[var(--text-secondary)]">
-          No fake trades yet. Open Watchlist and use Buy or Sell.
+          No trades yet. Open Watchlist and use Buy or Sell.
         </p>
       ) : (
         orders.map((order) => (
@@ -122,7 +122,7 @@ export function OrdersPage() {
               <p className="text-[var(--text-muted)]">
                 Product
                 <span className="block font-bold text-[var(--text-primary)]">
-                  {order.product ?? "PAPER"}
+                  {order.product ?? "-"}
                 </span>
               </p>
               <p className="text-[var(--text-muted)]">
@@ -167,7 +167,7 @@ export function OrdersPage() {
             )}
 
             <p className="mt-3 flex items-center gap-2 text-xs font-semibold text-[var(--accent-label)]">
-              <FiCheckCircle /> {order.status} in paper mode
+              <FiCheckCircle /> {order.status}
             </p>
           </article>
         ))

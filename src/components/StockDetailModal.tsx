@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { FiX, FiTrendingUp, FiTrendingDown, FiBarChart2 } from "react-icons/fi";
+import { FiX, FiTrendingUp, FiTrendingDown, FiBarChart2, FiLoader } from "react-icons/fi";
 import {
   addDoc, collection, doc, increment,
   runTransaction, serverTimestamp, getDocs, query, where,
@@ -22,6 +22,10 @@ type Props = {
   balance: number;
   onClose: () => void;
 };
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
 
 /** Returns net qty held for a symbol (BUY qty - SELL qty) */
 async function getHeldQty(userId: string, symbol: string): Promise<number> {
@@ -111,7 +115,7 @@ export function StockDetailModal({ instrument, balance, onClose }: Props) {
   const cannotExecute = priceNotReady || insufficientFunds || noHolding || sellExceedsHolding || busy;
 
   function getButtonLabel() {
-    if (busy) return "Placing order...";
+    if (busy) return side === "BUY" ? "Buying..." : "Placing order...";
     if (priceNotReady) return "Loading price...";
     if (insufficientFunds) return "Insufficient funds";
     if (noHolding) return "No holding to sell";
@@ -125,6 +129,10 @@ export function StockDetailModal({ instrument, balance, onClose }: Props) {
     setBusy(true);
     setMessage("");
     try {
+      if (side === "BUY") {
+        await sleep(1000);
+      }
+
       // Re-check held qty at execution time to prevent race conditions
       if (side === "SELL") {
         const freshHeld = await getHeldQty(user.uid, instrument.symbol);
@@ -414,7 +422,7 @@ export function StockDetailModal({ instrument, balance, onClose }: Props) {
               side === "BUY" ? "bg-emerald-400 text-slate-950" : "bg-red-400 text-white"
             }`}
           >
-            {side === "BUY" ? <FiTrendingUp size={18} /> : <FiTrendingDown size={18} />}
+            {busy ? <FiLoader size={18} className="animate-spin" /> : side === "BUY" ? <FiTrendingUp size={18} /> : <FiTrendingDown size={18} />}
             {getButtonLabel()}
           </button>
         </div>

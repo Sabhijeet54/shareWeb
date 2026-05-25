@@ -15,8 +15,8 @@ import {
   resolveUpstoxKey,
   fromUpstoxKey,
   fromUpstoxResponseKey,
-  getUpstoxAccessToken,
-  refreshUpstoxAccessToken,
+  getValidAccessToken,
+  refreshAccessToken,
 } from "@/lib/upstox";
 import { instrumentLoader } from "@/lib/instruments";
 import { logEvent } from "@/lib/logger";
@@ -136,16 +136,14 @@ class DataPump {
     this.wsConnecting = true;
 
     try {
-      let accessToken = getUpstoxAccessToken();
-      if (!accessToken) {
-        try {
-          accessToken = await refreshUpstoxAccessToken();
-        } catch {
-          logEvent("warn", "ws.auth_token_unavailable");
-          this.wsConnecting = false;
-          this.scheduleReconnect("auth_token_unavailable");
-          return;
-        }
+      let accessToken = "";
+      try {
+        accessToken = await getValidAccessToken();
+      } catch {
+        logEvent("warn", "ws.auth_token_unavailable");
+        this.wsConnecting = false;
+        this.scheduleReconnect("auth_token_unavailable");
+        return;
       }
 
       // v3 endpoint: GET /v3/feed/market-data-feed → 302 redirect to wss://
@@ -162,7 +160,7 @@ class DataPump {
       // Retry once with refreshed token if access token expired
       if (resp.status === 401) {
         try {
-          accessToken = await refreshUpstoxAccessToken();
+          accessToken = await refreshAccessToken();
           resp = await fetch("https://api.upstox.com/v3/feed/market-data-feed", {
             method: "GET",
             headers: {

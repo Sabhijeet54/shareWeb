@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { FiSearch, FiTrendingDown, FiTrendingUp, FiBell, FiX } from "react-icons/fi";
+import { FiSearch, FiTrendingDown, FiTrendingUp, FiBell, FiX, FiLoader } from "react-icons/fi";
 import { addDoc, collection, doc, increment, runTransaction, serverTimestamp } from "firebase/firestore";
 import { useAuth } from "@/context/AuthContext";
 import { db } from "@/lib/firebase";
@@ -500,6 +500,7 @@ function TradeTicket({ instrument, effectivePrice, balance }: { instrument: Inst
   const [limitPrice, setLimitPrice] = useState("");
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
+  const [busySide, setBusySide] = useState<"BUY" | "SELL" | null>(null);
 
   const meta = getContractMeta(instrument);
   const lotCount = Math.max(1, Number(lots) || 1);
@@ -513,11 +514,20 @@ function TradeTicket({ instrument, effectivePrice, balance }: { instrument: Inst
   const maxLots = Math.floor(balance / Math.max(1, walletImpact / lotCount + charges / lotCount));
   const priceReady = effectivePrice > 0;
 
+  function sleep(ms: number): Promise<void> {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+  }
+
   async function placeTrade(side: "BUY" | "SELL") {
     if (!user?.email || !priceReady) return;
     setBusy(true);
+    setBusySide(side);
     setMessage("");
     try {
+      if (side === "BUY") {
+        await sleep(1000);
+      }
+
       await runTransaction(db, async (txn) => {
         const userRef = doc(db, "users", user.uid);
         const snap = await txn.get(userRef);
@@ -541,6 +551,7 @@ function TradeTicket({ instrument, effectivePrice, balance }: { instrument: Inst
       setMessage(e instanceof Error ? e.message : "Trade failed.");
     } finally {
       setBusy(false);
+      setBusySide(null);
     }
   }
 
@@ -549,7 +560,7 @@ function TradeTicket({ instrument, effectivePrice, balance }: { instrument: Inst
       <div className="flex items-center justify-between gap-3 mb-4">
         <div>
           <h2 className="text-lg font-semibold text-[var(--text-primary)]">Trade Ticket</h2>
-          <p className="text-xs text-[var(--text-muted)]">Paper trading · wallet only</p>
+          <p className="text-xs text-[var(--text-muted)]">Wallet trading</p>
         </div>
         <p className="text-right text-xs text-[var(--text-secondary)]">
           Wallet <span className="block text-base font-bold text-[var(--text-primary)]">₹{balance.toLocaleString("en-IN")}</span>
@@ -622,11 +633,11 @@ function TradeTicket({ instrument, effectivePrice, balance }: { instrument: Inst
       <div className="grid grid-cols-2 gap-3">
         <button type="button" disabled={busy || !priceReady} onClick={() => placeTrade("BUY")}
           className="flex h-12 items-center justify-center gap-2 rounded-2xl bg-emerald-400 text-sm font-bold text-slate-950 disabled:opacity-40">
-          <FiTrendingUp /> {priceReady ? `BUY · ₹${buyDebit.toLocaleString("en-IN")}` : "Loading..."}
+          {busy && busySide === "BUY" ? <FiLoader className="animate-spin" /> : <FiTrendingUp />} {priceReady ? (busy && busySide === "BUY" ? "Buying..." : `BUY · ₹${buyDebit.toLocaleString("en-IN")}`) : "Loading..."}
         </button>
         <button type="button" disabled={busy || !priceReady} onClick={() => placeTrade("SELL")}
           className="flex h-12 items-center justify-center gap-2 rounded-2xl bg-red-400 text-sm font-bold text-[var(--text-primary)] disabled:opacity-40">
-          <FiTrendingDown /> {priceReady ? `SELL · ₹${sellCredit.toLocaleString("en-IN")}` : "Loading..."}
+          {busy && busySide === "SELL" ? <FiLoader className="animate-spin" /> : <FiTrendingDown />} {priceReady ? (busy && busySide === "SELL" ? "Placing order..." : `SELL · ₹${sellCredit.toLocaleString("en-IN")}`) : "Loading..."}
         </button>
       </div>
     </section>

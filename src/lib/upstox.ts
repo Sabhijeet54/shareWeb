@@ -10,90 +10,19 @@
 
 import axios from "axios";
 import type { AxiosInstance, AxiosError } from "axios";
+import {
+  getUpstoxApiKey,
+  getValidAccessToken,
+  isUpstoxConfigured,
+  refreshAccessToken,
+} from "@/services/upstoxAuth";
 
 // ── Environment Variables (loaded from .env.local) ──
-const UPSTOX_API_KEY    = process.env.UPSTOX_API_KEY ?? "";
-const UPSTOX_API_SECRET = process.env.UPSTOX_API_SECRET ?? "";
-const UPSTOX_ACCESS_TOKEN = process.env.UPSTOX_ACCESS_TOKEN ?? "";
-const UPSTOX_REFRESH_TOKEN = process.env.UPSTOX_REFRESH_TOKEN ?? "";
+const UPSTOX_API_KEY = getUpstoxApiKey();
 
 const UPSTOX_BASE_URL = "https://api.upstox.com/v2";
 
-let currentAccessToken = UPSTOX_ACCESS_TOKEN;
-let currentRefreshToken = UPSTOX_REFRESH_TOKEN;
-let refreshInFlight: Promise<string> | null = null;
-
-function canRefreshToken(): boolean {
-  return Boolean(UPSTOX_API_KEY && UPSTOX_API_SECRET && currentRefreshToken);
-}
-
-function extractAccessToken(payload: unknown): string | undefined {
-  const p = payload as Record<string, unknown> | undefined;
-  if (!p) return undefined;
-  const direct = p.access_token;
-  if (typeof direct === "string" && direct.length > 0) return direct;
-  const nested = (p.data as Record<string, unknown> | undefined)?.access_token;
-  if (typeof nested === "string" && nested.length > 0) return nested;
-  return undefined;
-}
-
-function extractRefreshToken(payload: unknown): string | undefined {
-  const p = payload as Record<string, unknown> | undefined;
-  if (!p) return undefined;
-  const direct = p.refresh_token;
-  if (typeof direct === "string" && direct.length > 0) return direct;
-  const nested = (p.data as Record<string, unknown> | undefined)?.refresh_token;
-  if (typeof nested === "string" && nested.length > 0) return nested;
-  return undefined;
-}
-
-export function getUpstoxAccessToken(): string {
-  return currentAccessToken;
-}
-
-export async function refreshUpstoxAccessToken(): Promise<string> {
-  if (refreshInFlight) return refreshInFlight;
-  if (!canRefreshToken()) {
-    throw new Error("Upstox refresh credentials missing (set UPSTOX_REFRESH_TOKEN, UPSTOX_API_KEY, UPSTOX_API_SECRET)");
-  }
-
-  refreshInFlight = (async () => {
-    const body = new URLSearchParams({
-      grant_type: "refresh_token",
-      refresh_token: currentRefreshToken,
-      client_id: UPSTOX_API_KEY,
-      client_secret: UPSTOX_API_SECRET,
-    });
-
-    const { data } = await axios.post(
-      `${UPSTOX_BASE_URL}/login/authorization/token`,
-      body.toString(),
-      {
-        headers: {
-          Accept: "application/json",
-          "Content-Type": "application/x-www-form-urlencoded",
-        },
-        timeout: 10000,
-      },
-    );
-
-    const nextAccess = extractAccessToken(data);
-    if (!nextAccess) {
-      throw new Error("Upstox token refresh succeeded without access_token in response");
-    }
-
-    const nextRefresh = extractRefreshToken(data);
-    currentAccessToken = nextAccess;
-    if (nextRefresh) currentRefreshToken = nextRefresh;
-
-    console.log("[Upstox] Access token refreshed automatically.");
-    return currentAccessToken;
-  })().finally(() => {
-    refreshInFlight = null;
-  });
-
-  return refreshInFlight;
-}
+export { getValidAccessToken, refreshAccessToken, isUpstoxConfigured };
 
 // ── Create reusable Axios instance ──
 const upstoxClient: AxiosInstance = axios.create({
@@ -108,14 +37,11 @@ const upstoxClient: AxiosInstance = axios.create({
 // ── Request interceptor: inject Authorization header ──
 upstoxClient.interceptors.request.use(
   async (config) => {
-    // Use the current in-memory token; if missing and refresh creds exist, try to refresh.
-    let token = currentAccessToken;
-    if (!token && canRefreshToken()) {
-      try {
-        token = await refreshUpstoxAccessToken();
-      } catch {
-        // fall through; request may fail with 401 and be handled in response interceptor
-      }
+    let token = "";
+    try {
+      token = await getValidAccessToken();
+    } catch {
+      // fall through; request may fail with 401 and be handled in response interceptor
     }
 
     if (token) {
@@ -141,16 +67,14 @@ upstoxClient.interceptors.response.use(
     const originalRequest = error.config as (typeof error.config & { _upstoxRetry?: boolean }) | undefined;
 
     if (status === 401 && originalRequest && !originalRequest._upstoxRetry) {
-      if (canRefreshToken()) {
-        try {
-          const nextToken = await refreshUpstoxAccessToken();
-          originalRequest._upstoxRetry = true;
-          originalRequest.headers = originalRequest.headers ?? {};
-          originalRequest.headers.Authorization = `Bearer ${nextToken}`;
-          return upstoxClient.request(originalRequest);
-        } catch (refreshErr) {
-          console.error("[Upstox] Auto-refresh failed:", String(refreshErr));
-        }
+      try {
+        const nextToken = await refreshAccessToken();
+        originalRequest._upstoxRetry = true;
+        originalRequest.headers = originalRequest.headers ?? {};
+        originalRequest.headers.Authorization = `Bearer ${nextToken}`;
+        return upstoxClient.request(originalRequest);
+      } catch (refreshErr) {
+        console.error("[Upstox] Auto-refresh failed:", String(refreshErr));
       }
 
       console.error("[Upstox] Access token expired/invalid and refresh is unavailable. Update .env.local token values.");
@@ -164,11 +88,6 @@ upstoxClient.interceptors.response.use(
 );
 
 export default upstoxClient;
-
-// ── Re-export credentials check ──
-export function isUpstoxConfigured(): boolean {
-  return Boolean(currentAccessToken || canRefreshToken());
-}
 
 // ── Dynamic Instrument Key Resolution ────────────────────────────────────────
 // All instrument keys are resolved dynamically via the InstrumentLoader.
