@@ -1,11 +1,7 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { FiX, FiTrendingUp, FiTrendingDown, FiBarChart2 } from "react-icons/fi";
-import {
-  createChart, ColorType, CrosshairMode,
-  type IChartApi, type ISeriesApi, type CandlestickData, type Time,
-} from "lightweight-charts";
 import {
   addDoc, collection, doc, increment,
   runTransaction, serverTimestamp, getDocs, query, where,
@@ -14,8 +10,11 @@ import { useAuth } from "@/context/AuthContext";
 import { db } from "@/lib/firebase";
 import { getContractMeta } from "@/lib/marketData";
 import { useLiveSingleQuote } from "@/lib/useLiveQuotes";
-import { useChartData } from "@/lib/useChartData";
 import { getCurrencySign } from "@/lib/symbolMap";
+import {
+  resolveTradingViewSymbol,
+} from "@/lib/tradingview";
+import { TradingViewChart } from "@/components/TradingViewChart";
 import type { Instrument, TradeOrder } from "@/types/app";
 
 type Props = {
@@ -23,14 +22,6 @@ type Props = {
   balance: number;
   onClose: () => void;
 };
-
-type TF = { label: string; value: string; range: string };
-const CHART_TFS: TF[] = [
-  { label: "5m", value: "5m", range: "1d" },
-  { label: "15m", value: "15m", range: "5d" },
-  { label: "1hr", value: "60m", range: "1mo" },
-  { label: "1D", value: "1d", range: "6mo" },
-];
 
 /** Returns net qty held for a symbol (BUY qty - SELL qty) */
 async function getHeldQty(userId: string, symbol: string): Promise<number> {
@@ -62,11 +53,15 @@ export function StockDetailModal({ instrument, balance, onClose }: Props) {
   const liveChangePct = (quote && !quote.isLoading) ? quote.changePct : instrument.change;
 
   // Chart
-  const [tf, setTf] = useState<TF>(CHART_TFS[0]);
-  const { bars, isLoading: chartLoading } = useChartData(instrument.symbol, tf.value, tf.range);
-  const chartContainerRef = useRef<HTMLDivElement>(null);
-  const chartRef = useRef<IChartApi | null>(null);
-  const seriesRef = useRef<ISeriesApi<"Candlestick"> | null>(null);
+  const resolution = useMemo(
+    () => resolveTradingViewSymbol(instrument.symbol, instrument.subtitle),
+    [instrument.symbol, instrument.subtitle],
+  );
+  const showTradingViewNotice = resolution.fallbackUsed;
+  const tvSymbol = useMemo(
+    () => quote?.tvSymbol ?? resolveTradingViewSymbol(instrument.symbol, instrument.subtitle).resolvedSymbol,
+    [quote?.tvSymbol, instrument.symbol, instrument.subtitle],
+  );
 
   // Held qty (net open position for this symbol)
   const [heldQty, setHeldQty] = useState<number>(0);
@@ -79,40 +74,6 @@ export function StockDetailModal({ instrument, balance, onClose }: Props) {
       .then(setHeldQty)
       .finally(() => setHeldLoading(false));
   }, [user?.uid, instrument.symbol]);
-
-  // Chart init
-  useEffect(() => {
-    if (!chartContainerRef.current) return;
-    const chart = createChart(chartContainerRef.current, {
-      layout: { background: { type: ColorType.Solid, color: "#070b10" }, textColor: "#94a3b8" },
-      grid: { vertLines: { color: "rgba(255,255,255,0.04)" }, horzLines: { color: "rgba(255,255,255,0.04)" } },
-      crosshair: { mode: CrosshairMode.Normal },
-      rightPriceScale: { borderColor: "rgba(255,255,255,0.1)" },
-      timeScale: { borderColor: "rgba(255,255,255,0.1)", timeVisible: true },
-      width: chartContainerRef.current.clientWidth,
-      height: 220,
-    });
-    chartRef.current = chart;
-    const series = chart.addCandlestickSeries({
-      upColor: "#34d399", downColor: "#f87171",
-      borderUpColor: "#34d399", borderDownColor: "#f87171",
-      wickUpColor: "#34d399", wickDownColor: "#f87171",
-    });
-    seriesRef.current = series;
-    const resize = () => {
-      if (chartContainerRef.current) chart.applyOptions({ width: chartContainerRef.current.clientWidth });
-    };
-    window.addEventListener("resize", resize);
-    return () => { window.removeEventListener("resize", resize); chart.remove(); };
-  }, []);
-
-  useEffect(() => {
-    if (!seriesRef.current || bars.length === 0) return;
-    seriesRef.current.setData(
-      bars.map((b) => ({ time: b.time as Time, open: b.open, high: b.high, low: b.low, close: b.close })) as CandlestickData[],
-    );
-    chartRef.current?.timeScale().fitContent();
-  }, [bars]);
 
   // Trade state
   const [side, setSide] = useState<"BUY" | "SELL">("BUY");
@@ -297,26 +258,14 @@ export function StockDetailModal({ instrument, balance, onClose }: Props) {
           <div className="mb-2 flex items-center gap-2">
             <FiBarChart2 size={13} className="text-[var(--accent-label)]" />
             <span className="text-xs font-semibold text-[var(--accent-label)]">LIVE CHART</span>
-            <div className="ml-auto flex gap-1">
-              {CHART_TFS.map((t) => (
-                <button key={t.label} type="button" onClick={() => setTf(t)}
-                  className={`h-7 rounded-lg px-2 text-[11px] font-bold transition ${tf.label === t.label ? "bg-emerald-400 text-slate-950" : "bg-[var(--hover-bg)] text-[var(--text-muted)] hover:text-[var(--text-primary)]"}`}>
-                  {t.label}
-                </button>
-              ))}
-            </div>
+            <span className="text-[10px] text-[var(--text-muted)]">{tvSymbol}</span>
           </div>
-          {chartLoading && bars.length === 0 ? (
-            <div className="flex h-[220px] items-center justify-center rounded-2xl bg-[var(--background)]/80">
-              <div className="h-6 w-6 animate-spin rounded-full border-2 border-emerald-400 border-t-transparent" />
-            </div>
-          ) : bars.length === 0 ? (
-            <div className="flex h-[220px] items-center justify-center rounded-2xl bg-[var(--background)]/80 text-sm text-[var(--text-muted)]">
-              Chart data unavailable for this instrument
-            </div>
-          ) : (
-            <div ref={chartContainerRef} className="w-full overflow-hidden rounded-2xl" />
+          {showTradingViewNotice && (
+            <p className="mb-2 text-[11px] text-[var(--text-muted)]">This symbol is only available on TradingView.</p>
           )}
+          <div className="overflow-hidden rounded-2xl border border-[var(--card-border)] bg-black/20">
+            <TradingViewChart symbol={tvSymbol} height={260} />
+          </div>
         </div>
 
         {/* Trade Ticket */}

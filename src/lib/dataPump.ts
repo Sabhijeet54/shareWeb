@@ -20,6 +20,7 @@ import {
 } from "@/lib/upstox";
 import { instrumentLoader } from "@/lib/instruments";
 import { logEvent } from "@/lib/logger";
+import { resolveTradingViewSymbol } from "@/lib/tradingview";
 
 const REST_INTERVAL = 5_000; // REST poll interval
 
@@ -376,6 +377,7 @@ class DataPump {
 
       const quote: NormalizedQuote = {
         symbol: appSymbol,
+        tvSymbol: existing?.tvSymbol ?? resolveTradingViewSymbol(appSymbol).resolvedSymbol,
         shortName: existing?.shortName ?? appSymbol,
         regularMarketPrice: ltp,
         regularMarketChange: change,

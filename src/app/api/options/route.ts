@@ -9,41 +9,42 @@ import { NextRequest, NextResponse } from "next/server";
 import { getOptionChain } from "@/services/market";
 import { logEvent } from "@/lib/logger";
 
+function toErrorDetails(err: unknown) {
+  const e = err as { message?: string; response?: { status?: number; data?: unknown }; config?: { url?: string } };
+  return {
+    message: e?.message ?? String(err),
+    upstreamStatus: e?.response?.status,
+    upstreamBody: e?.response?.data,
+    requestUrl: e?.config?.url,
+  };
+}
+
 export async function GET(req: NextRequest) {
   const sp = req.nextUrl.searchParams;
   const symbol = sp.get("symbol") ?? "";
   const dateParam = sp.get("date") ?? "";
+  const exchange = (sp.get("exchange") ?? "NSE").toUpperCase();
 
   if (!symbol) {
     return NextResponse.json({ error: "symbol required" }, { status: 400 });
   }
 
   try {
-    const chainData = await getOptionChain(symbol, dateParam || undefined);
+    const chainData = await getOptionChain(symbol, dateParam || undefined, exchange);
 
     return NextResponse.json(chainData, {
       headers: { "Cache-Control": "no-cache, no-store, must-revalidate" },
     });
   } catch (err) {
-    logEvent("error", "api.options.failed", { symbol, dateParam, error: String(err) });
+    const details = toErrorDetails(err);
+    logEvent("error", "api.options.failed", { symbol, dateParam, exchange, ...details });
     return NextResponse.json(
       {
+        error: "Upstream option chain request failed",
         symbol,
-        underlyingName: symbol,
-        spotPrice: 0,
-        atmStrike: 0,
-        pcr: 0,
-        maxPainStrike: 0,
-        expiryStr: "",
-        expirationDates: [],
-        chain: [],
-        totalCeOI: 0,
-        totalPeOI: 0,
-        exchange: "NSE",
-        synthetic: false,
-        error: "Temporary upstream issue. Showing empty chain.",
+        exchange,
       },
-      { status: 200 },
+      { status: 502 },
     );
   }
 }

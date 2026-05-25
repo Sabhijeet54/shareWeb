@@ -12,6 +12,7 @@ import { useEffect, useRef, useState } from "react";
 
 export type LiveQuote = {
   symbol: string;
+  tvSymbol?: string;
   name: string;
   price: number;
   change: number;       // absolute ₹ change
@@ -33,6 +34,7 @@ export type LiveQuote = {
 // Shape of NormalizedQuote sent from server via SSE
 type ServerQuote = {
   symbol: string;
+  tvSymbol?: string;
   shortName?: string;
   regularMarketPrice?: number;
   regularMarketChange?: number;
@@ -52,6 +54,7 @@ type ServerQuote = {
 function mapQuote(raw: ServerQuote, sym: string): LiveQuote {
   return {
     symbol: sym,
+    tvSymbol: raw.tvSymbol,
     name: raw.shortName ?? sym,
     price: raw.regularMarketPrice ?? 0,
     change: raw.regularMarketChange ?? 0,

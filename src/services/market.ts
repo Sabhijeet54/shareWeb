@@ -22,11 +22,13 @@ import {
   fetchUpstoxIntradayCandles,
 } from "@/services/upstoxService";
 import { allInstruments } from "@/lib/marketData";
+import { resolveTradingViewSymbol } from "@/lib/tradingview";
 
 // ── Shared Types (provider-agnostic, used by API routes) ─────────────────────
 
 export interface NormalizedQuote {
   symbol: string;
+  tvSymbol?: string;
   shortName: string;
   regularMarketPrice: number;
   regularMarketChange: number;
@@ -91,6 +93,12 @@ export interface ChartCandle {
   volume: number;
 }
 
+export interface MarketDataResult {
+  quotes: NormalizedQuote[];
+  candles?: ChartCandle[];
+  optionChain?: OptionChainResult;
+}
+
 // ── Cache Instances (5s TTL — shared across ALL users) ───────────────────────
 
 const quoteCache = new CacheManager<NormalizedQuote[]>(5000);
@@ -103,6 +111,11 @@ const chartCache = new CacheManager<ChartCandle[]>(10_000);
 function getDisplayName(symbol: string): string {
   const inst = allInstruments.find((i) => i.symbol === symbol);
   return inst?.title ?? symbol;
+}
+
+function getExchangeHint(symbol: string): string | undefined {
+  const inst = allInstruments.find((i) => i.symbol === symbol);
+  return inst?.subtitle;
 }
 
 // ── 1. Live Quotes ──────────────────────────────────────────────────────────
@@ -118,6 +131,7 @@ export async function getQuotes(symbols: string[]): Promise<NormalizedQuote[]> {
 
     return upstoxQuotes.map((q) => ({
       symbol: q.symbol,
+      tvSymbol: resolveTradingViewSymbol(q.symbol, getExchangeHint(q.symbol)).resolvedSymbol,
       shortName: getDisplayName(q.symbol),
       regularMarketPrice: q.ltp,
       regularMarketChange: q.change,
@@ -142,11 +156,12 @@ export async function getQuotes(symbols: string[]): Promise<NormalizedQuote[]> {
 export async function getOptionChain(
   symbol: string,
   expiryDate?: string,
+  exchange = "NSE",
 ): Promise<OptionChainResult> {
-  const cacheKey = `oc:${symbol}:${expiryDate ?? "nearest"}`;
+  const cacheKey = `oc:${exchange}:${symbol}:${expiryDate ?? "nearest"}`;
 
   return optionChainCache.getOrFetch(cacheKey, async () => {
-    const upstoxChain = await fetchUpstoxOptionChain(symbol, expiryDate);
+    const upstoxChain = await fetchUpstoxOptionChain(symbol, expiryDate, exchange);
 
     const chain: NormalizedStrike[] = upstoxChain.chain.map((row) => ({
       strike: row.strike,
@@ -171,7 +186,7 @@ export async function getOptionChain(
       exchange: upstoxChain.exchange,
       synthetic: false,
     };
-  }, { serveStaleOnError: true, maxStaleMs: 300_000 });
+  });
 }
 
 // ── 3. Expiry Dates ─────────────────────────────────────────────────────────
@@ -181,7 +196,7 @@ export async function getExpiryDates(symbol: string): Promise<string[]> {
   const cacheKey = `exp:${symbol}`;
 
   return expiryCache.getOrFetch(cacheKey, async () => {
-    const chain = await fetchUpstoxOptionChain(symbol);
+    const chain = await fetchUpstoxOptionChain(symbol, undefined, "NSE");
     return chain.expirationDates;
   }, { serveStaleOnError: true, maxStaleMs: 600_000 });
 }
@@ -200,7 +215,16 @@ export async function getChartData(
     const isIntraday = ["1m", "5m", "15m", "30m", "1", "5", "15", "30"].includes(interval);
 
     if (isIntraday) {
-      const candles = await fetchUpstoxIntradayCandles(symbol, interval);
+      let candles = await fetchUpstoxIntradayCandles(symbol, interval);
+
+      // When market is closed/weekend, intraday can be empty; fallback to recent historical candles.
+      if (candles.length === 0) {
+        const now = new Date();
+        const toDate = now.toISOString().slice(0, 10);
+        const fromDate = new Date(now.getTime() - 7 * 86400_000).toISOString().slice(0, 10);
+        candles = await fetchUpstoxCandles(symbol, interval, fromDate, toDate);
+      }
+
       return candles.map((c) => ({
         time: c.time,
         open: c.open,
@@ -233,4 +257,32 @@ export async function getChartData(
       volume: c.volume,
     }));
   }, { serveStaleOnError: true, maxStaleMs: 300_000 });
+}
+
+export async function getCandles(
+  symbol: string,
+  interval: string,
+  range?: string,
+): Promise<ChartCandle[]> {
+  return getChartData(symbol, interval, range);
+}
+
+export async function getMarketData(params: {
+  symbols: string[];
+  candle?: { symbol: string; interval: string; range?: string };
+  optionChain?: { symbol: string; expiryDate?: string; exchange?: string };
+}): Promise<MarketDataResult> {
+  const [quotes, candles, optionChain] = await Promise.all([
+    getQuotes(params.symbols),
+    params.candle ? getCandles(params.candle.symbol, params.candle.interval, params.candle.range) : Promise.resolve(undefined),
+    params.optionChain
+      ? getOptionChain(params.optionChain.symbol, params.optionChain.expiryDate, params.optionChain.exchange ?? "NSE")
+      : Promise.resolve(undefined),
+  ]);
+
+  return {
+    quotes,
+    candles,
+    optionChain,
+  };
 }

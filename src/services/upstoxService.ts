@@ -103,24 +103,115 @@ function shouldRetry(error: unknown): boolean {
   return msg.includes("timeout") || msg.includes("network");
 }
 
+function normalizeNseOptionSymbol(symbol: string): string {
+  const upper = symbol.trim().toUpperCase();
+  if (upper === "NIFTY 50") return "NIFTY";
+  if (upper === "BANK NIFTY") return "BANKNIFTY";
+  return symbol;
+}
+
+function normalizeExpiryInput(expiryDate?: string): string | undefined {
+  if (!expiryDate) return undefined;
+  const trimmed = expiryDate.trim();
+  if (!trimmed) return undefined;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) return trimmed;
+
+  const parsed = new Date(trimmed);
+  if (isNaN(parsed.getTime())) return undefined;
+
+  const y = parsed.getFullYear();
+  const m = String(parsed.getMonth() + 1).padStart(2, "0");
+  const d = String(parsed.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
+
+function extractExpiryFromContractRow(row: Record<string, unknown>): string | undefined {
+  const raw = row.expiry_date ?? row.expiry;
+  if (typeof raw === "string") {
+    return normalizeExpiryInput(raw);
+  }
+  if (typeof raw === "number") {
+    const date = new Date(raw > 1e12 ? raw : raw * 1000);
+    if (isNaN(date.getTime())) return undefined;
+    return normalizeExpiryInput(date.toISOString().slice(0, 10));
+  }
+  return undefined;
+}
+
+function unwrapUpstoxArrayPayload(payload: unknown): Record<string, unknown>[] {
+  const p = payload as { data?: unknown } | undefined;
+  if (Array.isArray(p?.data)) return p.data as Record<string, unknown>[];
+  if (Array.isArray(payload)) return payload as Record<string, unknown>[];
+  return [];
+}
+
+function buildRequestUrl(url: string, config?: AxiosRequestConfig): string {
+  const base = `https://api.upstox.com/v2${url}`;
+  const params = config?.params as Record<string, string | number | boolean | undefined> | undefined;
+  if (!params) return base;
+
+  const search = new URLSearchParams();
+  for (const [key, value] of Object.entries(params)) {
+    if (value === undefined || value === null) continue;
+    search.set(key, String(value));
+  }
+  const qs = search.toString();
+  return qs ? `${base}?${qs}` : base;
+}
+
+function extractUpstreamError(error: unknown): { status?: number; body?: unknown; message: string } {
+  const e = error as { response?: { status?: number; data?: unknown }; message?: string };
+  return {
+    status: e.response?.status,
+    body: e.response?.data,
+    message: e.message ?? String(error),
+  };
+}
+
 async function getWithRetry<T>(
   url: string,
   config?: AxiosRequestConfig,
   attempts = 3,
+  context?: { symbol?: string; operation?: string },
 ): Promise<T> {
   let lastError: unknown;
+  const requestUrl = buildRequestUrl(url, config);
+
   for (let attempt = 1; attempt <= attempts; attempt++) {
     try {
       const resp = await upstoxClient.get(url, { timeout: 10_000, ...(config ?? {}) });
       return resp.data as T;
     } catch (err) {
       lastError = err;
+      const upstream = extractUpstreamError(err);
+
+      logEvent("warn", "provider.retry", {
+        operation: context?.operation ?? "upstream_get",
+        symbol: context?.symbol,
+        requestUrl,
+        attempt,
+        attempts,
+        upstreamStatus: upstream.status,
+        upstreamBody: upstream.body,
+        error: upstream.message,
+      });
+
       if (!shouldRetry(err) || attempt >= attempts) break;
       const backoffMs = 300 * 2 ** (attempt - 1) + Math.floor(Math.random() * 100);
-      logEvent("warn", "provider.retry", { url, attempt, backoffMs, error: String(err) });
       await delay(backoffMs);
     }
   }
+
+  const upstream = extractUpstreamError(lastError);
+  logEvent("error", "provider.upstream_failed", {
+    operation: context?.operation ?? "upstream_get",
+    symbol: context?.symbol,
+    requestUrl,
+    upstreamStatus: upstream.status,
+    upstreamBody: upstream.body,
+    error: upstream.message,
+  });
+
   throw lastError;
 }
 
@@ -303,39 +394,80 @@ export async function fetchUpstoxOptionChain(
   if (!isUpstoxConfigured()) throw new Error("Upstox not configured");
 
   await instrumentLoader.ensureLoaded();
-  const optionSymbol = toUpstoxOptionSymbol(symbol);
-  const instrumentKey = await resolveUpstoxKey(symbol);
-  if (!instrumentKey) throw new Error(`Unknown instrument: ${symbol}`);
+  const normalizedSymbol = exchange === "NSE" ? normalizeNseOptionSymbol(symbol) : symbol;
+  const optionSymbol = toUpstoxOptionSymbol(normalizedSymbol);
+  const optionSymbolFromOriginal = toUpstoxOptionSymbol(symbol);
 
-  // Step 1: Get expiry dates
-  const expiryResp = await getWithRetry<any>("/option/contract", {
-    params: { instrument_key: instrumentKey },
-  });
+  const candidates = [
+    optionSymbol,
+    normalizedSymbol,
+    optionSymbolFromOriginal,
+    symbol,
+  ].map((s) => s.trim()).filter(Boolean);
 
-  const allExpiries: string[] = (expiryResp.data?.data ?? [])
-    .map((c: { expiry?: string }) => c.expiry)
-    .filter((e: string | undefined): e is string => Boolean(e))
-    .filter((e: string, i: number, a: string[]) => a.indexOf(e) === i) // dedupe
-    .sort();
+  const candidateKeys = new Set<string>();
+  for (const candidate of candidates) {
+    const key = await resolveUpstoxKey(candidate);
+    if (key) candidateKeys.add(key);
+  }
 
-  const selectedExpiry = expiryDate ?? allExpiries[0] ?? "";
+  if (candidateKeys.size === 0) throw new Error(`Unknown instrument: ${symbol}`);
+
+  // Step 1: Probe candidate keys and select one that yields actual option expiries
+  let instrumentKey = "";
+  let allExpiries: string[] = [];
+  let lastContractError: unknown;
+
+  for (const key of candidateKeys) {
+    try {
+      const expiryResp = await getWithRetry<any>("/option/contract", {
+        params: { instrument_key: key },
+      }, 3, { symbol: normalizedSymbol, operation: "option_contract" });
+
+      const expiries: string[] = unwrapUpstoxArrayPayload(expiryResp)
+        .map((c: Record<string, unknown>) => extractExpiryFromContractRow(c))
+        .filter((e: string | undefined): e is string => Boolean(e))
+        .filter((e: string, i: number, a: string[]) => a.indexOf(e) === i)
+        .sort();
+
+      if (expiries.length > 0) {
+        instrumentKey = key;
+        allExpiries = expiries;
+        break;
+      }
+    } catch (err) {
+      lastContractError = err;
+    }
+  }
+
+  if (!instrumentKey || allExpiries.length === 0) {
+    if (lastContractError) throw lastContractError;
+    throw new Error(`No option contracts found for symbol: ${symbol}`);
+  }
+
+  const requestedExpiry = normalizeExpiryInput(expiryDate);
+  const selectedExpiry = requestedExpiry && allExpiries.includes(requestedExpiry)
+    ? requestedExpiry
+    : (allExpiries[0] ?? requestedExpiry ?? "");
 
   // Step 2: Fetch option chain for selected expiry
-  const chainResp = await getWithRetry<any>("/option/chain", {
-    params: {
-      instrument_key: instrumentKey,
-      expiry_date: selectedExpiry,
-    },
-  });
+  const chainParams: Record<string, string> = {
+    instrument_key: instrumentKey,
+  };
+  chainParams.expiry_date = selectedExpiry;
 
-  const chainData = chainResp.data?.data ?? [];
-  const spotPrice = chainData[0]?.underlying_spot_price ?? 0;
+  const chainResp = await getWithRetry<any>("/option/chain", {
+    params: chainParams,
+  }, 3, { symbol: normalizedSymbol, operation: "option_chain" });
+
+  const chainData = unwrapUpstoxArrayPayload(chainResp);
+  const spotPrice = Number((chainData[0]?.underlying_spot_price as number | undefined) ?? 0);
 
   // Find ATM strike
   let atmStrike = 0;
   let minDist = Infinity;
   for (const row of chainData) {
-    const strike = row.strike_price ?? 0;
+    const strike = Number((row.strike_price as number | undefined) ?? 0);
     const dist = Math.abs(strike - spotPrice);
     if (dist < minDist) { minDist = dist; atmStrike = strike; }
   }
@@ -364,28 +496,28 @@ export async function fetchUpstoxOptionChain(
         premium: ceLTP,
         bid: ceQuote.bid_price ?? 0,
         ask: ceQuote.ask_price ?? 0,
-        iv: parseFloat(((ceGreeks.iv ?? 0) * 100).toFixed(1)),
+        iv: ceGreeks.iv ?? 0,
         oi: ceQuote.oi ?? 0,
         oiFormatted: formatVolume(ceQuote.oi ?? 0),
         oiChange: ceQuote.oi_day_change ?? 0,
         volume: ceQuote.volume ?? 0,
         volumeFormatted: formatVolume(ceQuote.volume ?? 0),
-        change: parseFloat((ceLTP - ceClose).toFixed(2)),
-        changePct: ceClose ? parseFloat((((ceLTP - ceClose) / ceClose) * 100).toFixed(2)) : 0,
+        change: (ceQuote.net_change as number) ?? (ceLTP - ceClose),
+        changePct: (ceQuote.change_percentage as number) ?? (ceClose ? ((ceLTP - ceClose) / ceClose) * 100 : 0),
         itm: strike < spotPrice,
       },
       pe: {
         premium: peLTP,
         bid: peQuote.bid_price ?? 0,
         ask: peQuote.ask_price ?? 0,
-        iv: parseFloat(((peGreeks.iv ?? 0) * 100).toFixed(1)),
+        iv: peGreeks.iv ?? 0,
         oi: peQuote.oi ?? 0,
         oiFormatted: formatVolume(peQuote.oi ?? 0),
         oiChange: peQuote.oi_day_change ?? 0,
         volume: peQuote.volume ?? 0,
         volumeFormatted: formatVolume(peQuote.volume ?? 0),
-        change: parseFloat((peLTP - peClose).toFixed(2)),
-        changePct: peClose ? parseFloat((((peLTP - peClose) / peClose) * 100).toFixed(2)) : 0,
+        change: (peQuote.net_change as number) ?? (peLTP - peClose),
+        changePct: (peQuote.change_percentage as number) ?? (peClose ? ((peLTP - peClose) / peClose) * 100 : 0),
         itm: strike > spotPrice,
       },
     };
@@ -394,21 +526,13 @@ export async function fetchUpstoxOptionChain(
   // Sort by strike price
   chain.sort((a, b) => a.strike - b.strike);
 
-  // Calculate PCR and Max Pain
+  // Upstream OI totals
   const totalCeOI = chain.reduce((s, r) => s + r.ce.oi, 0);
   const totalPeOI = chain.reduce((s, r) => s + r.pe.oi, 0);
-  const pcr = totalCeOI > 0 ? parseFloat((totalPeOI / totalCeOI).toFixed(2)) : 0;
 
-  let maxPainStrike = atmStrike;
-  let minPain = Infinity;
-  for (const row of chain) {
-    let pain = 0;
-    for (const rr of chain) {
-      pain += Math.max(0, row.strike - rr.strike) * rr.ce.oi;
-      pain += Math.max(0, rr.strike - row.strike) * rr.pe.oi;
-    }
-    if (pain < minPain) { minPain = pain; maxPainStrike = row.strike; }
-  }
+  const payloadMeta = (chainResp as Record<string, unknown>) ?? {};
+  const pcr = (payloadMeta.pcr as number) ?? 0;
+  const maxPainStrike = (payloadMeta.max_pain_strike as number) ?? 0;
 
   // Format expiry for display — expiry is ISO date string like "2026-05-26"
   let expiryStr = selectedExpiry;
@@ -461,10 +585,10 @@ export async function fetchUpstoxCandles(
   // Map our intervals → Upstox intervals
   const intervalMap: Record<string, string> = {
     "1m": "1minute", "1": "1minute",
-    "5m": "5minute", "5": "5minute",
-    "15m": "15minute", "15": "15minute",
+    "5m": "30minute", "5": "30minute",
+    "15m": "30minute", "15": "30minute",
     "30m": "30minute", "30": "30minute",
-    "1h": "60minute", "60": "60minute", "60m": "60minute",
+    "1h": "30minute", "60": "30minute", "60m": "30minute",
     "1d": "day", "D": "day",
     "1wk": "week", "W": "week",
     "1mo": "month", "M": "month",
@@ -503,17 +627,29 @@ export async function fetchUpstoxIntradayCandles(
   const instrumentKey = encodeURIComponent(rawKey);
   const intervalMap: Record<string, string> = {
     "1m": "1minute", "1": "1minute",
-    "5m": "5minute", "5": "5minute",
-    "15m": "15minute", "15": "15minute",
+    "5m": "30minute", "5": "30minute",
+    "15m": "30minute", "15": "30minute",
     "30m": "30minute", "30": "30minute",
-    "1h": "60minute", "60": "60minute", "60m": "60minute",
+    "1h": "30minute", "60": "30minute", "60m": "30minute",
   };
   const upstoxInterval = intervalMap[interval] ?? "1minute";
 
-  const url = `/historical-candle/intraday/${instrumentKey}/${upstoxInterval}`;
-  const data = await getWithRetry<any>(url);
-
-  const candles: unknown[][] = data?.data?.candles ?? [];
+  let candles: unknown[][] = [];
+  try {
+    const url = `/historical-candle/intraday/${instrumentKey}/${upstoxInterval}`;
+    const data = await getWithRetry<any>(url);
+    candles = data?.data?.candles ?? [];
+  } catch (err) {
+    // Fallback for interval validation errors (UDAPI1076) and transient provider changes.
+    if (upstoxInterval !== "1minute") {
+      logEvent("warn", "chart.intraday_interval_fallback", { symbol, requestedInterval: interval, fallbackInterval: "1minute", error: String(err) });
+      const fallbackUrl = `/historical-candle/intraday/${instrumentKey}/1minute`;
+      const fallback = await getWithRetry<any>(fallbackUrl);
+      candles = fallback?.data?.candles ?? [];
+    } else {
+      throw err;
+    }
+  }
 
   return candles.map((c) => ({
     time: Math.floor(new Date(c[0] as string).getTime() / 1000),

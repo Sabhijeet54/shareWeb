@@ -27,6 +27,7 @@ export async function GET(req: NextRequest) {
   const sp = req.nextUrl.searchParams;
   const symbol = sp.get("symbol") ?? "";
   const expiry = sp.get("expiry") ?? "";
+  const exchange = (sp.get("exchange") ?? "NSE").toUpperCase();
   const strikeParam = sp.get("strike") ?? "";
   const typeParam = sp.get("type") ?? "";
 
@@ -35,7 +36,7 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    const chainData = await getOptionChain(symbol, expiry || undefined);
+    const chainData = await getOptionChain(symbol, expiry || undefined, exchange);
 
     if (!chainData || chainData.chain.length === 0) {
       return NextResponse.json(
@@ -102,10 +103,10 @@ export async function GET(req: NextRequest) {
       headers: { "Cache-Control": "no-cache, no-store, must-revalidate" },
     });
   } catch (err) {
-    logEvent("error", "api.option_chain.failed", { symbol, expiry, error: String(err) });
+    logEvent("error", "api.option_chain.failed", { symbol, expiry, exchange, error: String(err) });
     return NextResponse.json(
-      { error: "Failed to fetch option chain", symbol, strikes: [], calls: [], puts: [], availableExpiries: [] },
-      { status: 200 },
+      { error: "Upstream option chain request failed", symbol, exchange },
+      { status: 502 },
     );
   }
 }

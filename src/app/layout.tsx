@@ -29,6 +29,14 @@ export default function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} dark h-full antialiased`}
       data-theme="dark"
     >
+      <head>
+        <link rel="preconnect" href="https://s3.tradingview.com" crossOrigin="" />
+        <link rel="preconnect" href="https://s.tradingview.com" crossOrigin="" />
+        <link rel="preconnect" href="https://www.tradingview.com" crossOrigin="" />
+        <link rel="dns-prefetch" href="https://s3.tradingview.com" />
+        <link rel="dns-prefetch" href="https://s.tradingview.com" />
+        <link rel="dns-prefetch" href="https://www.tradingview.com" />
+      </head>
       <body
         className="flex min-h-full flex-col bg-[var(--background)] text-[var(--foreground)]"
         suppressHydrationWarning

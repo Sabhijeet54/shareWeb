@@ -1,11 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { collection, onSnapshot, query, where } from "firebase/firestore";
+import { collection, deleteDoc, doc, onSnapshot, query, where } from "firebase/firestore";
 import { FiCheckCircle } from "react-icons/fi";
 import { useAuth } from "@/context/AuthContext";
 import { db } from "@/lib/firebase";
 import type { TradeOrder } from "@/types/app";
+
+const ORDER_TTL_MS = 24 * 60 * 60 * 1000;
 
 export function OrdersPage() {
   const { user } = useAuth();
@@ -20,9 +22,32 @@ export function OrdersPage() {
       where("userId", "==", user.uid),
     );
     return onSnapshot(ordersQuery, (snapshot) => {
+      const now = Date.now();
       const all = snapshot.docs.map((item) => ({ id: item.id, ...item.data() })) as TradeOrder[];
-      all.sort((a, b) => (b.createdAt?.toMillis?.() ?? 0) - (a.createdAt?.toMillis?.() ?? 0));
-      setOrders(all);
+
+      const staleIds = all
+        .filter((order) => {
+          const createdAtMs = order.createdAt?.toMillis?.();
+          if (!createdAtMs) return false;
+          return now - createdAtMs >= ORDER_TTL_MS;
+        })
+        .map((order) => order.id)
+        .filter((id): id is string => Boolean(id));
+
+      if (staleIds.length > 0) {
+        staleIds.forEach((id) => {
+          void deleteDoc(doc(db, "trades", id));
+        });
+      }
+
+      const activeOrders = all.filter((order) => {
+        const createdAtMs = order.createdAt?.toMillis?.();
+        if (!createdAtMs) return true;
+        return now - createdAtMs < ORDER_TTL_MS;
+      });
+
+      activeOrders.sort((a, b) => (b.createdAt?.toMillis?.() ?? 0) - (a.createdAt?.toMillis?.() ?? 0));
+      setOrders(activeOrders);
     });
   }, [user]);
 
