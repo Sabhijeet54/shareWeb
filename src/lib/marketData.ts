@@ -220,30 +220,67 @@ const NSE_LOT_SIZES: Record<string, number> = {
   "NIFTY 50": 25, "BANK NIFTY": 15,
 };
 
+function normalizeFnoSymbol(symbol: string): string {
+  return symbol.toUpperCase().replace(/[^A-Z0-9]/g, "");
+}
+
+function resolveLotSize(symbol: string): number | undefined {
+  const direct = NSE_LOT_SIZES[symbol];
+  if (direct) return direct;
+
+  const spot = getDerivativeSpotSymbol(symbol);
+  if (spot && NSE_LOT_SIZES[spot]) return NSE_LOT_SIZES[spot];
+
+  const normalized = normalizeFnoSymbol(symbol);
+  const normalizedSpot = normalizeFnoSymbol(spot ?? "");
+
+  for (const [key, value] of Object.entries(NSE_LOT_SIZES)) {
+    const normalizedKey = normalizeFnoSymbol(key);
+    if (normalizedKey === normalized || normalizedKey === normalizedSpot) {
+      return value;
+    }
+  }
+
+  if (normalized.includes("BANKNIFTY")) return 30;
+  if (normalized.includes("FINNIFTY")) return 60;
+  if (normalized.includes("MIDCPNIFTY")) return 120;
+  if (normalized.includes("SENSEX")) return 20;
+  if (normalized.includes("NIFTY")) return 75;
+
+  return undefined;
+}
+
 export function getContractMeta(instrument: Instrument): ContractMeta {
   const sym = instrument.symbol;
+  const normalizedSym = normalizeFnoSymbol(sym);
   const isOption = instrument.subtitle.toLowerCase().includes("option");
   const isFuture = instrument.subtitle.toLowerCase().includes("current month");
+  const isDerivative = isOption || isFuture;
 
-  if (sym.includes("BANKNIFTY")) {
-    return { lotSize: 30, product: isOption ? "OPT" : isFuture ? "FUT" : "INDEX", marginRate: isFuture ? 0.15 : 1, tradableLabel: "30 qty / lot" };
+  if (isDerivative) {
+    const lotSize = resolveLotSize(sym) ?? 500;
+    return {
+      lotSize,
+      product: isOption ? "OPT" : "FUT",
+      marginRate: isFuture ? 0.18 : 1,
+      tradableLabel: `${lotSize} qty / lot`,
+    };
   }
-  if (sym.includes("FINNIFTY")) {
-    return { lotSize: 60, product: isOption ? "OPT" : isFuture ? "FUT" : "INDEX", marginRate: isFuture ? 0.15 : 1, tradableLabel: "60 qty / lot" };
+
+  if (normalizedSym.includes("BANKNIFTY")) {
+    return { lotSize: 30, product: "INDEX", marginRate: 1, tradableLabel: "30 qty / lot" };
   }
-  if (sym.includes("MIDCPNIFTY")) {
-    return { lotSize: 120, product: isOption ? "OPT" : isFuture ? "FUT" : "INDEX", marginRate: isFuture ? 0.15 : 1, tradableLabel: "120 qty / lot" };
+  if (normalizedSym.includes("FINNIFTY")) {
+    return { lotSize: 60, product: "INDEX", marginRate: 1, tradableLabel: "60 qty / lot" };
   }
-  if (sym.includes("SENSEX")) {
+  if (normalizedSym.includes("MIDCPNIFTY")) {
+    return { lotSize: 120, product: "INDEX", marginRate: 1, tradableLabel: "120 qty / lot" };
+  }
+  if (normalizedSym.includes("SENSEX")) {
     return { lotSize: 20, product: "INDEX", marginRate: 1, tradableLabel: "20 qty / lot" };
   }
-  if (sym.includes("NIFTY")) {
-    return { lotSize: 75, product: isOption ? "OPT" : isFuture ? "FUT" : "INDEX", marginRate: isFuture ? 0.15 : 1, tradableLabel: "75 qty / lot" };
-  }
-  if (isFuture || isOption) {
-    const spotKey = getDerivativeSpotSymbol(sym) ?? sym;
-    const lotSize = NSE_LOT_SIZES[spotKey] ?? 500;
-    return { lotSize, product: isOption ? "OPT" : "FUT", marginRate: isFuture ? 0.18 : 1, tradableLabel: `${lotSize} qty / lot` };
+  if (normalizedSym.includes("NIFTY")) {
+    return { lotSize: 75, product: "INDEX", marginRate: 1, tradableLabel: "75 qty / lot" };
   }
   if (instrument.subtitle === "Commodity") return { lotSize: 1, product: "COMMODITY", marginRate: 1, tradableLabel: "1 unit" };
   if (instrument.subtitle === "Crypto")    return { lotSize: 1, product: "CRYPTO",    marginRate: 1, tradableLabel: "1 unit" };
