@@ -4,6 +4,30 @@ import { FormEvent, useState } from "react";
 import { FiLock, FiMail, FiTrendingUp } from "react-icons/fi";
 import { useAuth } from "@/context/AuthContext";
 
+function getAuthErrorMessage(error: unknown) {
+  const code =
+    typeof error === "object" && error && "code" in error
+      ? String((error as { code?: string }).code)
+      : "";
+
+  switch (code) {
+    case "auth/invalid-credential":
+    case "auth/user-not-found":
+    case "auth/wrong-password":
+      return "Invalid email or password.";
+    case "auth/too-many-requests":
+      return "Too many attempts. Please try again in a few minutes.";
+    case "auth/network-request-failed":
+      return "Network issue. Check internet and retry.";
+    case "auth/invalid-api-key":
+      return "Firebase API key is invalid/missing in deployment environment.";
+    case "auth/unauthorized-domain":
+      return "This domain is not authorized in Firebase Authentication settings.";
+    default:
+      return "Login failed. Please verify Firebase production env and auth setup.";
+  }
+}
+
 export function LoginScreen() {
   const { login } = useAuth();
   const [email, setEmail] = useState("");
@@ -18,8 +42,8 @@ export function LoginScreen() {
 
     try {
       await login(email.trim(), password);
-    } catch {
-      setError("Invalid login details. Contact admin if access is missing.");
+    } catch (error) {
+      setError(getAuthErrorMessage(error));
     } finally {
       setLoading(false);
     }
