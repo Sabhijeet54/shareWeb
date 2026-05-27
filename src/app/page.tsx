@@ -1,5 +1,5 @@
-import { AppGate } from "@/components/AppGate";
+import { redirect } from "next/navigation";
 
 export default function Home() {
-  return <AppGate />;
+  redirect("/home");
 }

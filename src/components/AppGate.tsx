@@ -1,10 +1,15 @@
 "use client";
 
-import { AuthProvider, useAuth } from "@/context/AuthContext";
+import { useAuth } from "@/context/AuthContext";
 import { DashboardApp } from "@/components/DashboardApp";
 import { LoginScreen } from "@/components/LoginScreen";
+import type { TabKey } from "@/components/BottomNav";
 
-function GateContent() {
+type AppGateProps = {
+  initialTab?: TabKey;
+};
+
+function GateContent({ initialTab }: AppGateProps) {
   const { user, loading } = useAuth();
 
   if (loading) {
@@ -15,13 +20,9 @@ function GateContent() {
     );
   }
 
-  return user ? <DashboardApp /> : <LoginScreen />;
+  return user ? <DashboardApp initialTab={initialTab} /> : <LoginScreen />;
 }
 
-export function AppGate() {
-  return (
-    <AuthProvider>
-      <GateContent />
-    </AuthProvider>
-  );
+export function AppGate({ initialTab }: AppGateProps) {
+  return <GateContent initialTab={initialTab} />;
 }

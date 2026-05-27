@@ -55,6 +55,44 @@ const NAV_ITEMS: NavItem[] = [
 
 const GROUPS = ["Market", "Portfolio", "Tools", "Account"];
 
+const TAB_TO_PATH: Record<Exclude<TabKey, "more">, string> = {
+  home: "/home",
+  watchlist: "/watchlist",
+  chart: "/chart",
+  orders: "/orders",
+  positions: "/positions",
+  holdings: "/holdings",
+  funds: "/funds",
+  profile: "/profile",
+  options: "/options",
+  screener: "/screener",
+  reports: "/reports",
+  portfolio: "/portfolio",
+  journal: "/journal",
+  strategy: "/strategy",
+  brokerage: "/brokerage",
+  globalMarkets: "/globalMarkets",
+  news: "/news",
+  companyProfile: "/companyProfile",
+};
+
+function pathToTab(pathname: string | null): TabKey | null {
+  if (!pathname || pathname === "/") {
+    return "home";
+  }
+
+  const segment = pathname.replace(/^\/+/, "").split("/")[0] as keyof typeof TAB_TO_PATH;
+  return segment in TAB_TO_PATH ? segment : null;
+}
+
+function normalizeTab(tab?: string | null): TabKey {
+  if (!tab) {
+    return "home";
+  }
+
+  return tab in TAB_TO_PATH ? (tab as TabKey) : "home";
+}
+
 // "More" drawer for mobile
 function MoreDrawer({ onChange, onClose }: { onChange: (t: TabKey) => void; onClose: () => void }) {
   return (
@@ -79,16 +117,26 @@ function MoreDrawer({ onChange, onClose }: { onChange: (t: TabKey) => void; onCl
   );
 }
 
-export function DashboardApp() {
+export function DashboardApp({ initialTab }: { initialTab?: TabKey }) {
   const { profile, logout } = useAuth();
   const { theme, toggleTheme } = useTheme();
 
   // Persist active tab + chart symbol in sessionStorage so refresh stays on same screen
   const [activeTab, setActiveTabRaw] = useState<TabKey>(() => {
     if (typeof window !== "undefined") {
-      return (sessionStorage.getItem("sw_tab") as TabKey) || "home";
+      const pathTab = pathToTab(window.location.pathname);
+      if (pathTab) {
+        return pathTab;
+      }
+
+      if (initialTab) {
+        return normalizeTab(initialTab);
+      }
+
+      return normalizeTab(sessionStorage.getItem("sw_tab"));
     }
-    return "home";
+
+    return normalizeTab(initialTab);
   });
   const [chartSymbol, setChartSymbol] = useState(() => {
     const fallback = equitySymbols[0] ?? "";
@@ -110,7 +158,35 @@ export function DashboardApp() {
       return tab;
     });
     if (typeof window !== "undefined") sessionStorage.setItem("sw_tab", tab);
+
+    if (typeof window !== "undefined" && tab !== "more") {
+      const targetPath = TAB_TO_PATH[tab];
+      if (window.location.pathname !== targetPath) {
+        window.history.pushState(null, "", targetPath);
+      }
+    }
   }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    const syncFromLocation = () => {
+      const routeTab = pathToTab(window.location.pathname);
+      if (routeTab && routeTab !== activeTab) {
+        setActiveTabRaw(routeTab);
+        sessionStorage.setItem("sw_tab", routeTab);
+      }
+    };
+
+    syncFromLocation();
+    window.addEventListener("popstate", syncFromLocation);
+
+    return () => {
+      window.removeEventListener("popstate", syncFromLocation);
+    };
+  }, [activeTab]);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
